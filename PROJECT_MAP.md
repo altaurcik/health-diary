@@ -1,6 +1,6 @@
 # Дневник здоровья — карта проекта
 
-Дата создания и проверки: 2026-09-26.
+Дата создания: 2026-09-26. Последняя проверка: 2026-09-27.
 
 ## Назначение
 
@@ -40,8 +40,8 @@ Telegram-дневник здоровья для давления, пульса �
 | `frontend/scripts/check-ui.mjs` | Проверка импорта, CSS и рендера установленных компонентов |
 | `frontend/src/App.jsx`, `src/styles.css` | Экраны, формы и адаптивный интерфейс |
 | `frontend/src/AlarmSettings.jsx` | Список будильников и редактор времени, типа и дней недели |
-| `frontend/src/data.js`, `test/data.test.js` | Логика дневника и 26 тестов |
-| `backend/`, `.github/workflows/delivery.yml`, `ops/` | API, бот/планировщик, тесты и конвейер релизов (production ещё не установлен) |
+| `frontend/src/data.js`, `test/data.test.js` | Логика дневника; всего 35 frontend-тестов |
+| `backend/`, `.github/workflows/delivery.yml`, `ops/` | API, бот/планировщик, тесты и действующий конвейер релизов |
 | `frontend/src/CloudGate.jsx` | Вход в Telegram, серверное хранение и production-экран запуска |
 | `frontend/index.html`, `vite.config.js` | Точка входа и локальные dev/preview-серверы |
 | [PRODUCT.md](PRODUCT.md), [DESIGN.md](DESIGN.md), [UI_DIRECTION.md](docs/UI_DIRECTION.md) | Продукт, визуальные токены и направление текущей версии |
@@ -78,6 +78,16 @@ Telegram-дневник здоровья для давления, пульса �
 Workflow и инструкции — [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Реализовано и проверено
+
+- 2026-09-27: исправление запуска при раздельной VPN-маршрутизации.
+  Официальный Telegram SDK включён в сайт (`public/vendor`), вместо внешнего
+  запроса к telegram.org. При сбое SDK исходные initData из launch hash
+  передаются на прежнюю серверную проверку подписи; доверия к user_id клиента нет.
+  Ошибка Telegram-входа отделена от обычного браузера, восстановление через
+  native openTelegramLink/bridge; поздняя инициализация перечитывается.
+  35 frontend-тестов, включая запуск официального SDK без сети, прошли локально.
+  На сервере подтверждено наличие сохранённого дневника без чтения его значений.
+  Фактическая блокировка telegram.org на телефоне не доказана; проверка на устройстве впереди.
 
 - 2026-09-26: production установлен через GitHub Actions, run 36268694502,
   checks/deploy success. Telegram API подтвердил @bpjournalbot, меню Mini App
