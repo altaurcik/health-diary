@@ -1,0 +1,30 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+secrets/
+server-parameters.txt
+*.pem
+*.key
+
+# Personal records, uploads, databases and backups
+/private/
+/data/
+/uploads/
+/backups/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.dump
+
+# Local generated files
+.DS_Store
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+dist/
