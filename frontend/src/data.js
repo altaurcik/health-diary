@@ -3,7 +3,7 @@ export const PERIODS = [['7', '7 дней'], ['30', '30 дней'], ['90', '3 м
 export const uid = () => crypto.randomUUID();
 export const mean = values => values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
 export const number = (value, digits = 0) => value == null ? '—' : new Intl.NumberFormat('ru-RU', { maximumFractionDigits: digits }).format(value);
-export const deviceZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow';
+export const deviceZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 export function validZone(zone) { try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); return true; } catch { return false; } }
 export function parts(at, zone) {
   return Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(at)).map(p => [p.type, p.value]));
@@ -20,6 +20,31 @@ export function zonedIso(value, zone) {
   if (formTime(guess, zone) !== value) throw new Error('Такого времени нет в выбранном часовом поясе. Выберите другое.');
   return new Date(guess).toISOString();
 }
+export function timeMetadata(at, timeZone = deviceZone()) {
+  const timestamp = new Date(at).getTime();
+  if (!Number.isFinite(timestamp) || !validZone(timeZone)) throw new Error('Проверьте дату и часовой пояс.');
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, hourCycle: 'h23',
+  }).formatToParts(timestamp).map(part => [part.type, part.value]));
+  const localDateTime = `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}.${p.fractionalSecond}`;
+  return { at: new Date(timestamp).toISOString(), timestamp, localDateTime, timeZone,
+    utcOffsetMinutes: (Date.parse(`${localDateTime}Z`) - timestamp) / 60000 };
+}
+export function recordTiming({ localValue, timeZone, initialAt, existing, savedAt = Date.now() }) {
+  const savedIso = new Date(savedAt).toISOString();
+  // An unchanged minute field must not truncate seconds or move a repeated DST hour.
+  if (existing && localValue === formTime(existing.at, timeZone)) {
+    const result = { at: existing.at, timestamp: Date.parse(existing.at), createdAt: existing.createdAt ?? null, updatedAt: savedIso };
+    for (const key of ['localDateTime', 'timeZone', 'utcOffsetMinutes']) {
+      if (existing[key] !== undefined) result[key] = existing[key];
+    }
+    return result;
+  }
+  const at = !existing && localValue === formTime(initialAt, timeZone)
+    ? initialAt : zonedIso(localValue, timeZone);
+  return { ...timeMetadata(at, timeZone), createdAt: existing ? existing.createdAt ?? null : savedIso, updatedAt: savedIso };
+}
 export function formatDate(at, zone, options = {}) { return new Intl.DateTimeFormat('ru-RU', { timeZone: zone, day: 'numeric', month: 'short', ...options }).format(new Date(at)); }
 export function formatTime(at, zone) { return new Intl.DateTimeFormat('ru-RU', { timeZone: zone, hour: '2-digit', minute: '2-digit' }).format(new Date(at)); }
 export function emptyState(theme = 'dark') {
@@ -29,6 +54,13 @@ export function emptyState(theme = 'dark') {
 export function validateRecord(input, now = Date.now()) {
   if (!['bp', 'weight'].includes(input.kind)) return 'Неизвестный тип записи.';
   if (!Number.isFinite(Date.parse(input.at)) || Date.parse(input.at) > now + 120000) return 'Укажите корректное время, не позже текущего.';
+  if (input.timestamp !== undefined && input.timestamp !== Date.parse(input.at)) return 'Не удалось проверить время записи.';
+  if (['localDateTime', 'timeZone', 'utcOffsetMinutes'].some(key => input[key] !== undefined)) {
+    if (typeof input.timeZone !== 'string' || !validZone(input.timeZone)
+      || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$/.test(input.localDateTime)
+      || !Number.isFinite(input.utcOffsetMinutes)
+      || Date.parse(`${input.localDateTime}Z`) - input.utcOffsetMinutes * 60000 !== Date.parse(input.at)) return 'Некорректное местное время записи.';
+  }
   if (String(input.comment || '').length > 300) return 'Комментарий — до 300 символов.';
   if (input.kind === 'weight') {
     if (!Number.isFinite(input.weight) || input.weight < 10 || input.weight > 500) return 'Введите вес от 10 до 500 кг.';
@@ -47,7 +79,8 @@ export function validateState(value) {
     const s = value.schedules[kind];
     if (!s || !['daily', 'weekly', 'monthly'].includes(s.frequency) || !Array.isArray(s.times) || !s.times.length || s.times.some(t => !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) || !Array.isArray(s.days) || s.days.some(d => !Number.isInteger(d) || d < 0 || d > 6) || s.monthDay < 1 || s.monthDay > 28) throw new Error('Не удалось прочитать расписание.');
   }
-  return value;
+  // Legacy UTC instants are known; their original device time zone is not.
+  return { ...value, records: value.records.map(record => ({ ...record, timestamp: Date.parse(record.at) })) };
 }
 export function validateProfile(profile, schedules, now = Date.now()) {
   if (!validZone(profile.timezone)) return 'Выберите корректный часовой пояс.';
@@ -66,16 +99,24 @@ export function saveState(storage, value) {
   try { storage.setItem(STORAGE_KEY, JSON.stringify(value)); return ''; }
   catch { return 'Не удалось сохранить запись. Возможно, хранилище браузера заполнено или недоступно. Данные в форме сохранены.'; }
 }
-export function sorted(records) { return [...records].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)); }
+// A wall-clock coordinate for display only; never store it as the UTC instant.
+export function localTimeCoordinate(at, zone = deviceZone()) {
+  return Date.parse(`${timeMetadata(at, zone).localDateTime}Z`);
+}
+export function sorted(records, zone = deviceZone()) {
+  return records.map(record => ({ record, local: localTimeCoordinate(record.at, zone) }))
+    .sort((a, b) => b.local - a.local || Date.parse(b.record.at) - Date.parse(a.record.at))
+    .map(({ record }) => record);
+}
 export function selectRecords(records, metric, period, zone, now = Date.now()) {
   const kind = metric === 'weight' ? 'weight' : 'bp';
   const start = period === 'all' ? null : shiftDay(dayKey(now, zone), 1 - Number(period));
-  return sorted(records.filter(r => r.kind === kind && (metric !== 'pulse' || r.pulse != null) && Date.parse(r.at) <= now && (!start || dayKey(r.at, zone) >= start)));
+  return sorted(records.filter(r => r.kind === kind && (metric !== 'pulse' || r.pulse != null) && Date.parse(r.at) <= now && (!start || dayKey(r.at, zone) >= start)), zone);
 }
 export function valuesFor(records, metric) { return records.map(r => metric === 'bp' ? r.systolic : metric === 'pulse' ? r.pulse : r.weight).filter(v => v != null); }
 export function stats(records, metric) { const values = valuesFor(records, metric); return { avg: mean(values), min: values.length ? Math.min(...values) : null, max: values.length ? Math.max(...values) : null, lower: metric === 'bp' ? mean(records.map(r => r.diastolic)) : null, count: values.length }; }
 export function chartData(records, metric, period, zone) {
-  const asc = [...records].reverse();
+  const asc = sorted(records, zone).reverse();
   const weekly = period === '365' || (period === 'all' && asc.length > 0 && (Date.parse(asc.at(-1).at) - Date.parse(asc[0].at)) > 180 * 86400000);
   const daily = weekly || period === '90' || asc.length > 40;
   if (!daily) return asc.map(r => ({ at: r.at, value: valuesFor([r], metric)[0], lower: metric === 'bp' ? r.diastolic : null, count: 1 }));
@@ -120,8 +161,8 @@ export function makeDemo(now = Date.now()) {
   for (let d = 29; d >= 0; d--) {
     const day = shiftDay(today, -d); const at = zonedIso(`${day}T08:15`, zone);
     if (Date.parse(at) <= now) {
-      state.records.push({ id: `demo-bp-${d}`, kind: 'bp', at, systolic: 121 + ((d * 7) % 13), diastolic: 76 + ((d * 3) % 8), pulse: 64 + ((d * 5) % 13), comment: d === 0 ? 'Утреннее измерение, после отдыха' : '', seriesId: null });
-      if (d % 3 === 0) state.records.push({ id: `demo-weight-${d}`, kind: 'weight', at, weight: Math.round((76.4 + d * .025 + Math.sin(d) * .2) * 10) / 10, comment: '' });
+      state.records.push({ id: `demo-bp-${d}`, kind: 'bp', ...timeMetadata(at, zone), systolic: 121 + ((d * 7) % 13), diastolic: 76 + ((d * 3) % 8), pulse: 64 + ((d * 5) % 13), comment: d === 0 ? 'Утреннее измерение, после отдыха' : '', seriesId: null });
+      if (d % 3 === 0) state.records.push({ id: `demo-weight-${d}`, kind: 'weight', ...timeMetadata(at, zone), weight: Math.round((76.4 + d * .025 + Math.sin(d) * .2) * 10) / 10, comment: '' });
     }
   }
   return state;

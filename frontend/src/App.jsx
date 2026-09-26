@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppRoot, Button, Input } from '@telegram-apps/telegram-ui';
 import { Activity, ArrowDownToLine, ArrowRight, Bell, Check, ChevronRight, Clock3, Heart, History, Home, Info, Moon, Plus, Scale, ShieldCheck, SlidersHorizontal, Sun, Trash2, UserRound, X, Monitor, Repeat2 } from 'lucide-react';
-import { STORAGE_KEY, PERIODS, uid, number, dayKey, formTime, zonedIso, formatDate, formatTime, emptyState, loadState, saveState, sorted, selectRecords, stats, chartData, seriesMean, bmi, reminders, makeDemo, validZone, validateRecord, validateProfile } from './data.js';
+import { STORAGE_KEY, PERIODS, uid, number, dayKey, formTime, formatDate, formatTime, emptyState, loadState, saveState, sorted, selectRecords, stats, chartData, seriesMean, bmi, reminders, makeDemo, validZone, validateRecord, validateProfile, deviceZone, timeMetadata, recordTiming, localTimeCoordinate } from './data.js';
 
 const METRICS = { bp: { label: 'Давление', unit: 'мм рт. ст.', icon: Activity }, pulse: { label: 'Пульс', unit: 'уд/мин', icon: Heart }, weight: { label: 'Вес', unit: 'кг', icon: Scale } };
 const DAYS = [[1, 'Пн'], [2, 'Вт'], [3, 'Ср'], [4, 'Чт'], [5, 'Пт'], [6, 'Сб'], [0, 'Вс']];
@@ -23,8 +23,9 @@ function Chart({ records, metric, period, zone }) {
   let high = Math.ceil(Math.max(...values) + (metric === 'weight' ? .5 : 5));
   if (high === low) high += 1;
   const W = 420, H = 185, left = 38, right = 12, top = 14, bottom = 28;
-  const start = Date.parse(points[0].at), end = Date.parse(points.at(-1).at);
-  const x = i => points.length === 1 ? (W + left - right) / 2 : left + (Date.parse(points[i].at) - start) / (end - start || 1) * (W - left - right);
+  const coordinates = points.map(point => localTimeCoordinate(point.at, zone));
+  const start = coordinates[0], end = coordinates.at(-1);
+  const x = i => start === end ? (W + left - right) / 2 : left + (coordinates[i] - start) / (end - start) * (W - left - right);
   const y = v => top + (high - v) / (high - low) * (H - top - bottom);
   const path = key => points.map((p, i) => `${i ? 'L' : 'M'} ${x(i)} ${y(p[key])}`).join(' ');
   const selected = selection == null ? points.at(-1) : points[selection];
@@ -47,7 +48,7 @@ function Chart({ records, metric, period, zone }) {
 }
 
 function RecordRows({ records, zone, onEdit, limit }) {
-  const list = limit ? sorted(records).slice(0, limit) : sorted(records);
+  const list = limit ? sorted(records, zone).slice(0, limit) : sorted(records, zone);
   return <div className="record-list">{list.map(r => <button className="record-row" key={r.id} onClick={() => onEdit(r)}>
     <span className={`record-icon ${r.kind}`}><Icon as={METRICS[r.kind].icon} /></span>
     <span className="record-main"><strong>{r.kind === 'bp' ? `${r.systolic} / ${r.diastolic}` : number(r.weight, 1)} <small>{METRICS[r.kind].unit}</small></strong><span>{formatDate(r.at, zone)} · {formatTime(r.at, zone)}{r.seriesId ? ' · серия' : ''}</span>{r.comment && <span className="comment-preview">{r.comment}</span>}</span>
@@ -55,22 +56,25 @@ function RecordRows({ records, zone, onEdit, limit }) {
   </button>)}</div>;
 }
 
-function RecordForm({ kind, existing, seriesId, zone, onSave, onDelete, onCancel }) {
-  const [fields, setFields] = useState(() => ({ systolic: existing?.systolic ?? '', diastolic: existing?.diastolic ?? '', pulse: existing?.pulse ?? '', weight: existing?.weight ?? '', at: formTime(existing?.at || Date.now(), zone), comment: existing?.comment ?? '' }));
+function RecordForm({ kind, existing, seriesId, onSave, onDelete, onCancel }) {
+  const [zone] = useState(deviceZone);
+  const [initialAt] = useState(Date.now);
+  const [fields, setFields] = useState(() => ({ systolic: existing?.systolic ?? '', diastolic: existing?.diastolic ?? '', pulse: existing?.pulse ?? '', weight: existing?.weight ?? '', at: formTime(existing?.at || initialAt, zone), comment: existing?.comment ?? '' }));
   const [error, setError] = useState(''); const [confirmDelete, setConfirmDelete] = useState(false); const errorRef = useRef(null);
   const update = key => e => { setFields(f => ({ ...f, [key]: e.target.value })); setError(''); };
   function submit(e) {
-    e.preventDefault(); let at;
-    try { at = zonedIso(fields.at, zone); } catch (err) { setError(err.message); requestAnimationFrame(() => errorRef.current?.focus()); return; }
+    e.preventDefault(); let timing;
+    try { timing = recordTiming({ localValue: fields.at, timeZone: zone, initialAt, existing }); } catch (err) { setError(err.message); requestAnimationFrame(() => errorRef.current?.focus()); return; }
     const parse = value => Number(String(value).replace(',', '.'));
-    const record = { id: existing?.id || uid(), kind, at, comment: fields.comment.trim(), ...(kind === 'bp' ? { systolic: parse(fields.systolic), diastolic: parse(fields.diastolic), pulse: fields.pulse === '' ? null : parse(fields.pulse), seriesId: existing?.seriesId || seriesId || null } : { weight: parse(fields.weight) }) };
+    const record = { id: existing?.id || uid(), kind, ...timing, comment: fields.comment.trim(), ...(kind === 'bp' ? { systolic: parse(fields.systolic), diastolic: parse(fields.diastolic), pulse: fields.pulse === '' ? null : parse(fields.pulse), seriesId: existing?.seriesId || seriesId || null } : { weight: parse(fields.weight) }) };
     const result = onSave(record);
     if (result) { setError(result); requestAnimationFrame(() => errorRef.current?.focus()); }
   }
   return <section className="page form-page"><div className="form-title"><span className={`large-icon ${kind}`}><Icon as={METRICS[kind].icon} size={27} /></span><h1>{existing ? 'Изменить запись' : kind === 'bp' ? (seriesId ? 'Повторное измерение' : 'Записать давление') : 'Записать вес'}</h1><p>{kind === 'bp' ? 'Показания вашего тонометра' : 'Небольшой шаг к полной картине'}</p></div>
     <form onSubmit={submit}>
       {kind === 'bp' ? <><div className="pressure-inputs"><Field id="systolic" label="Верхнее" placeholder="128" inputMode="numeric" required value={fields.systolic} onChange={update('systolic')} /><span className="input-slash">/</span><Field id="diastolic" label="Нижнее" placeholder="82" inputMode="numeric" required value={fields.diastolic} onChange={update('diastolic')} /></div><p className="unit-caption">мм рт. ст.</p><Field id="pulse" label="Пульс" hint="Необязательно · уд/мин" placeholder="71" inputMode="numeric" value={fields.pulse} onChange={update('pulse')} /></> : <Field id="weight" label="Вес, кг" placeholder="76,4" inputMode="decimal" required value={fields.weight} onChange={update('weight')} />}
-      <Field id="measurement-time" label="Дата и время" hint={zone.replaceAll('_', ' ')} type="datetime-local" required value={fields.at} onChange={update('at')} />
+      <Field id="measurement-time" label="Местные дата и время" hint={`Время устройства · ${zone.replaceAll('_', ' ')}`} type="datetime-local" required value={fields.at} onChange={update('at')} />
+      {existing?.timeZone && existing.timeZone !== zone && <p className="small-note">При измерении: {formatDate(existing.at, existing.timeZone)} в {formatTime(existing.at, existing.timeZone)} · {existing.timeZone.replaceAll('_', ' ')}.</p>}
       <div className="field"><label htmlFor="comment">Комментарий <span className="muted">· необязательно</span></label><textarea id="comment" rows={3} placeholder="Например, после прогулки" maxLength={300} value={fields.comment} onChange={update('comment')} /><small>{fields.comment.length}/300</small></div>
       {error && <div role="alert" tabIndex={-1} ref={errorRef} className="form-error">{error}</div>}
       <Button className="primary-button" type="submit" size="l" stretched before={<Icon as={Check} />}>Сохранить измерение</Button>
@@ -113,7 +117,7 @@ function ProfileForm({ state, onboarding, onSave, onCancel, onExport, onTheme, t
     <form onSubmit={submit}><section className="profile-section"><h2>О вас</h2><p className="small-note">Можно заполнить сейчас или позже.</p><Field id="birth-date" label="Дата рождения" type="date" value={profile.birthDate} max={dayKey(Date.now(), validZone(profile.timezone) ? profile.timezone : state.profile.timezone)} min="1900-01-01" onChange={update('birthDate')} />
       <div className="two-fields"><SelectField id="sex" label="Пол" value={profile.sex} onChange={update('sex')}><option value="">Не указан</option><option value="female">Женский</option><option value="male">Мужской</option><option value="unspecified">Не указывать</option></SelectField><Field id="height" label="Рост, см" inputMode="decimal" placeholder="178" value={profile.height} onChange={update('height')} /></div>
       {onboarding && <Field id="initial-weight" label="Текущий вес, кг" hint="Станет первой записью в дневнике" inputMode="decimal" placeholder="76,4" value={weight} onChange={e => setWeight(e.target.value)} />}
-      <div className="field"><label htmlFor="timezone">Часовой пояс</label><input className="native-input" id="timezone" list="timezones" value={profile.timezone} onChange={update('timezone')} required spellCheck={false} /><datalist id="timezones">{zoneOptions.map(z => <option key={z} value={z} />)}</datalist><small>Время записей и расписаний, например Europe/Moscow.</small></div>
+      <div className="field"><label htmlFor="timezone">Часовой пояс расписания</label><input className="native-input" id="timezone" list="timezones" value={profile.timezone} onChange={update('timezone')} required spellCheck={false} /><datalist id="timezones">{zoneOptions.map(z => <option key={z} value={z} />)}</datalist><small>Расписание следует этому поясу. Записи и история используют местное время устройства.</small></div>
     </section><section className="profile-section"><h2>Ритм измерений</h2><p className="small-note">Сайт покажет расписание, пока открыт. Сообщения в Telegram подключим на следующем этапе.</p>{['bp', 'weight'].map(kind => <ScheduleFields kind={kind} value={schedules[kind]} key={kind} onChange={s => setSchedules(v => ({ ...v, [kind]: s }))} />)}</section>
       {error && <div className="form-error" role="alert" tabIndex={-1} ref={errorRef}>{error}</div>}
       <Button size="l" stretched className="primary-button" type="submit" before={<Icon as={Check} />}>{onboarding ? 'Начать вести дневник' : 'Сохранить настройки'}</Button>
@@ -134,7 +138,7 @@ export default function App() {
   const [form, setForm] = useState(null); const [toast, setToast] = useState(''); const [error, setError] = useState(initial.error);
   const [savedRecord, setSavedRecord] = useState(null); const [clock, setClock] = useState(Date.now());
   const appearance = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme;
-  const zone = data.profile.timezone;
+  const zone = deviceZone();
   useEffect(() => { const m = matchMedia('(prefers-color-scheme: dark)'); const update = e => setSystemDark(e.matches); m.addEventListener('change', update); return () => m.removeEventListener('change', update); }, []);
   useEffect(() => { document.documentElement.dataset.theme = appearance; document.documentElement.style.colorScheme = appearance; document.querySelector('meta[name="theme-color"]').content = appearance === 'dark' ? '#101719' : '#f3f7f6'; }, [appearance]);
   useEffect(() => { const id = setInterval(() => setClock(Date.now()), 30000); return () => clearInterval(id); }, []);
@@ -155,7 +159,7 @@ export default function App() {
     const validation = validateRecord(record);
     if (validation) return validation;
     const next = { ...data, records: [...data.records.filter(r => r.id !== record.id), record] };
-    if (form.seriesSource) next.records = next.records.map(r => r.id === form.seriesSource ? { ...r, seriesId: record.seriesId } : r);
+    if (form.seriesSource) next.records = next.records.map(r => r.id === form.seriesSource ? { ...r, seriesId: record.seriesId, updatedAt: record.updatedAt } : r);
     if (form.reminderKey) next.reminderActions = { ...data.reminderActions, [form.reminderKey]: 'done' };
     const failure = commit(next); if (failure) return failure;
     setSavedRecord(record); setForm(null); setToast(demo ? 'Пример записи добавлен' : 'Измерение сохранено'); setClock(Date.now()); return '';
@@ -165,7 +169,10 @@ export default function App() {
     const onboarding = view === 'onboarding';
     const next = onboarding ? emptyState(theme) : { ...data };
     next.profile = profile; next.schedules = schedules;
-    if (weight != null) next.records = [...next.records, { id: uid(), kind: 'weight', weight, at: new Date().toISOString(), comment: '' }];
+    if (weight != null) {
+      const timing = timeMetadata(Date.now());
+      next.records = [...next.records, { id: uid(), kind: 'weight', weight, ...timing, createdAt: timing.at, updatedAt: timing.at, comment: '' }];
+    }
     const failure = commit(next, onboarding); if (failure) return failure;
     if (onboarding) { setDemo(false); setView('today'); setSavedRecord(null); }
     setToast(onboarding ? 'Ваш дневник готов к первой записи' : 'Настройки сохранены'); return '';
@@ -174,8 +181,10 @@ export default function App() {
   function exportData() {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `healthnote-${dayKey(Date.now(), zone)}${demo ? '-demo' : ''}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 500); setToast('Копия дневника подготовлена');
   }
-  const latest = sorted(data.records);
-  const pressure = latest.find(r => r.kind === 'bp'); const pulse = latest.find(r => r.kind === 'bp' && r.pulse != null); const weight = latest.find(r => r.kind === 'weight');
+  const latest = sorted(data.records, zone);
+  // Latest measurement means the actual latest instant, even when clocks move back.
+  const byInstant = [...data.records].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  const pressure = byInstant.find(r => r.kind === 'bp'); const pulse = byInstant.find(r => r.kind === 'bp' && r.pulse != null); const weight = byInstant.find(r => r.kind === 'weight');
   const chartRecords = selectRecords(data.records, metric, period, zone, clock);
   const summary = stats(chartRecords, metric);
   const due = reminders(data, clock);
@@ -187,7 +196,7 @@ export default function App() {
       {demo && <div className="demo-banner"><span><span className="status-dot" />Демо · вымышленные данные</span><button onClick={() => { setForm(null); setView('onboarding'); }}>Начать свой<Icon as={ArrowRight} size={14} /></button></div>}
       {error && <div role="alert" className="persistent-error"><Icon as={Info} /><span>{error}</span></div>}
       <main id="main-content">
-        {form ? <RecordForm key={form.existing?.id || `${form.kind}-${form.seriesId || 'new'}`} kind={form.kind} existing={form.existing} seriesId={form.seriesId} zone={zone} onSave={saveRecord} onDelete={deleteRecord} onCancel={() => setForm(null)} /> : view === 'profile' || view === 'onboarding' ? <ProfileForm key={`${view}-${demo}`} state={view === 'onboarding' ? emptyState(theme) : data} onboarding={view === 'onboarding'} onSave={saveProfile} onCancel={() => setView('today')} onExport={exportData} onTheme={changeTheme} theme={theme} /> : <div className="page">
+        {form ? <RecordForm key={form.existing?.id || `${form.kind}-${form.seriesId || 'new'}`} kind={form.kind} existing={form.existing} seriesId={form.seriesId} onSave={saveRecord} onDelete={deleteRecord} onCancel={() => setForm(null)} /> : view === 'profile' || view === 'onboarding' ? <ProfileForm key={`${view}-${demo}`} state={view === 'onboarding' ? emptyState(theme) : data} onboarding={view === 'onboarding'} onSave={saveProfile} onCancel={() => setView('today')} onExport={exportData} onTheme={changeTheme} theme={theme} /> : <div className="page">
           <div className="page-title"><div><h1>{view === 'today' ? 'Сегодня' : 'История'}</h1><p>{view === 'today' ? formatDate(clock, zone, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Каждое измерение — часть картины.'}</p></div>{view === 'today' && <span className="day-count"><Check size={14} aria-hidden="true" />{todayCount ? `${todayCount} ${todayCount === 1 ? 'запись' : todayCount < 5 ? 'записи' : 'записей'}` : 'Новый день'}</span>}</div>
           {savedRecord?.kind === 'bp' && <div className="series-notice"><div><Icon as={Check} /><span>{series?.count > 1 ? `Среднее серии: ${number(series.avg)} / ${number(series.lower)} · ${series.count} замера` : 'Измерение записано'}</span><button className="icon-button" aria-label="Закрыть предложение повтора" onClick={() => setSavedRecord(null)}><Icon as={X} size={16} /></button></div><button className="text-button" onClick={() => openRecord('bp', null, { seriesId: savedRecord.seriesId || uid(), seriesSource: savedRecord.id })}><Icon as={Repeat2} size={16} />Добавить повторный замер</button></div>}
           {view === 'today' && <><section className="measurements" aria-label="Последние измерения"><div className="pressure-summary"><div className="summary-label"><span><Icon as={Activity} size={18} />Давление</span><span className="time-label">{pressure ? `${dayKey(pressure.at, zone) === dayKey(clock, zone) ? 'Сегодня' : formatDate(pressure.at, zone)} · ${formatTime(pressure.at, zone)}` : 'Первое измерение'}</span></div><div className="pressure-value">{pressure ? <>{pressure.systolic}<span>/</span>{pressure.diastolic}</> : <span className="no-value">— / —</span>}</div><div className="pressure-bottom"><span>мм рт. ст.</span><span>Последняя запись</span></div></div><div className="secondary-measurements"><div><span className="summary-label"><Icon as={Heart} size={17} />Пульс</span><strong>{pulse ? pulse.pulse : '—'} <small>уд/мин</small></strong><span className="time-label">{pulse ? `${formatDate(pulse.at, zone)} · ${formatTime(pulse.at, zone)}` : 'Добавьте с давлением'}</span></div><div><span className="summary-label"><Icon as={Scale} size={17} />Вес</span><strong>{weight ? number(weight.weight, 1) : '—'} <small>кг</small></strong><span className="time-label">{weight ? `${formatDate(weight.at, zone)} · ${formatTime(weight.at, zone)}` : 'Первое взвешивание'}</span></div></div></section>
