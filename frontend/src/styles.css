@@ -364,3 +364,42 @@ h3 { font-size: 16px; font-weight: 650; }
 .record-actions .primary-button { min-height: 48px; height: 48px; }
 .record-actions .text-button { padding-inline: 4px; }
 .form-page input, .form-page textarea { scroll-margin-block: 20px 80px; }
+
+/* Focused input screens share the same compact control sizes. */
+.compact-inputs { padding-top: 12px; }
+.compact-inputs .field { gap: 5px; margin-bottom: 12px; }
+.compact-inputs .diary-input, .compact-inputs .diary-input input { min-height: 48px; }
+.compact-inputs .diary-input input, .compact-inputs .native-input, .compact-inputs select { min-height: 48px; height: 48px; padding: 8px 10px; font-size: 16px; }
+.compact-inputs input, .compact-inputs select { scroll-margin-block: 20px 160px; }
+.compact-inputs .page-title { margin-bottom: 12px; }
+.compact-inputs h1 { font-size: 22px; line-height: 1.3; }
+.welcome-page { padding-bottom: calc(16px + max(env(safe-area-inset-bottom), var(--tg-safe-bottom, 0px))); }
+.welcome-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.welcome-heading h1 { min-width: 0; }
+.welcome-heading .text-button { flex-shrink: 0; }
+.welcome-intro { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 10px 0 20px; }
+.welcome-note, .welcome-storage { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 8px 0 16px; }
+.welcome-storage { padding-top: 12px; border-top: 1px solid var(--subtle); }
+.welcome-actions, .profile-actions { grid-template-columns: minmax(0, 1fr); }
+.welcome-actions .alarm-save { min-height: 48px; }
+.profile-panel { padding-top: 16px; }
+.profile-panel > .small-note { margin-bottom: 12px; }
+.profile-actions { bottom: calc(80px + max(env(safe-area-inset-bottom), var(--tg-safe-bottom, 0px))); }
+.profile-panel .theme-panel { border-top: 0; padding-top: 0; }
+.profile-panel h2 { font-size: 17px; margin-bottom: 12px; }
+.profile-panel .theme-options { margin-block: 12px; }
+.profile-panel .theme-options button { padding-block: 10px; }
+.profile-panel .profile-section { padding-block: 16px; }
+.profile-panel .alarm-editor { margin: 0; padding: 0; border: 0; }
+.profile-panel .alarm-editor > h3 { display: none; }
+.profile-panel .alarm-time-input { font-size: 24px; }
+.profile-panel .alarm-editor-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+.profile-panel .alarm-save { min-height: 48px; font-size: 13px; padding-inline: 8px; }
+.profile-panel .alarm-repeat-summary { margin-bottom: 12px; }
+.profile-timezone { margin-bottom: 8px; }
+.profile-timezone summary { min-height: 44px; display: flex; align-items: center; color: var(--accent); font-size: 12px; cursor: pointer; overflow-wrap: anywhere; }
+.profile-timezone summary svg { margin-left: auto; flex-shrink: 0; }
+.profile-timezone[open] summary svg { transform: rotate(90deg); }
+
+.alarm-days button { min-width: 0; width: 0; flex: 1 1 0; aspect-ratio: auto; }
+.healthnote:has(.alarm-editor) .toast { display: none; }

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, ChevronRight, Check } from 'lucide-react';
 import { newSchedule, validateSchedules } from './data.js';
 
@@ -11,8 +11,9 @@ function repeatLabel(alarm) {
   return DAYS.filter(([day]) => days.includes(day)).map(([, label]) => label).join(', ');
 }
 
-export default function AlarmSettings({ schedules, onChange }) {
+export default function AlarmSettings({ schedules, onChange, onEditingChange }) {
   const [draft, setDraft] = useState(null);
+  useEffect(() => { onEditingChange?.(Boolean(draft)); }, [Boolean(draft), onEditingChange]);
   const [error, setError] = useState('');
   const [removed, setRemoved] = useState(null);
   const editorRef = useRef(null), addRef = useRef(null), errorRef = useRef(null);
@@ -39,14 +40,14 @@ export default function AlarmSettings({ schedules, onChange }) {
   }
   const patch = value => setDraft(current => ({ ...current, ...value }));
   return <div className="alarm-settings">
-    {schedules.length ? <div className="alarm-list">{schedules.slice().sort((a, b) => a.time.localeCompare(b.time)).map(alarm => <div className={`alarm-row${alarm.enabled ? '' : ' is-off'}`} key={alarm.id}>
+    {!draft && (schedules.length ? <div className="alarm-list">{schedules.slice().sort((a, b) => a.time.localeCompare(b.time)).map(alarm => <div className={`alarm-row${alarm.enabled ? '' : ' is-off'}`} key={alarm.id}>
       <button type="button" className="alarm-open" aria-label={`Изменить напоминание ${alarm.time}, ${TYPES[alarm.kind]}`} onClick={() => edit(alarm)}>
         <span className="alarm-time">{alarm.time}</span><span className="alarm-description"><strong>{TYPES[alarm.kind]}</strong><span>{repeatLabel(alarm)}{!alarm.enabled && ' · выключено'}</span></span><ChevronRight size={17} aria-hidden="true" />
       </button>
       <div className="alarm-controls"><label className="switch"><input type="checkbox" aria-label={`Включить напоминание ${alarm.time}, ${TYPES[alarm.kind]}`} checked={alarm.enabled} onChange={async event => { const enabled = event.target.checked; if (await apply(schedules.map(s => s.id === alarm.id ? { ...s, enabled } : s)) && draft?.id === alarm.id) patch({ enabled }); }} /><span /></label>
         <button type="button" className="icon-button danger" aria-label={`Удалить напоминание ${alarm.time}, ${TYPES[alarm.kind]}`} onClick={() => remove(alarm)}><Trash2 size={18} aria-hidden="true" /></button></div>
-    </div>)}</div> : <p className="alarm-empty">Напоминаний пока нет. Добавьте первое, когда вам удобно измерять давление или вес.</p>}
-    {removed && <div className="alarm-undo" role="status"><span>Напоминание удалено</span><button type="button" className="text-button" onClick={async () => { if (await apply([...schedules, removed])) setRemoved(null); }}>Вернуть</button></div>}
+    </div>)}</div> : <p className="alarm-empty">Напоминаний пока нет. Добавьте первое, когда вам удобно измерять давление или вес.</p>)}
+    {removed && !draft && <div className="alarm-undo" role="status"><span>Напоминание удалено</span><button type="button" className="text-button" onClick={async () => { if (await apply([...schedules, removed])) setRemoved(null); }}>Вернуть</button></div>}
     {draft ? <div className="alarm-editor" ref={editorRef} tabIndex={-1}>
       <h3>{schedules.some(s => s.id === draft.id) ? 'Изменить напоминание' : 'Новое напоминание'}</h3>
       <div className="field"><label htmlFor="alarm-time">Время напоминания</label><input id="alarm-time" className="native-input alarm-time-input" type="time" value={draft.time} onInput={event => patch({ time: event.currentTarget.value })} onChange={event => patch({ time: event.target.value })} /></div>
@@ -54,7 +55,7 @@ export default function AlarmSettings({ schedules, onChange }) {
       <div className="alarm-days-heading"><span>Дни повтора</span><button type="button" className="text-button" onClick={() => patch({ days: draft.days.length === 7 ? [] : [1, 2, 3, 4, 5, 6, 0] })}>{draft.days.length === 7 ? 'Снять все' : 'Все дни'}</button></div>
       <div className="days alarm-days" role="group" aria-label="Дни напоминания">{DAYS.map(([day, label]) => <button type="button" key={day} aria-pressed={draft.days.includes(day)} className={draft.days.includes(day) ? 'selected' : ''} onClick={() => patch({ days: draft.days.includes(day) ? draft.days.filter(d => d !== day) : [...draft.days, day] })}>{label}</button>)}</div>
       <p className="alarm-repeat-summary">{repeatLabel(draft)}</p>
-      <div className="alarm-editor-actions"><button type="button" className="alarm-save" onClick={save}><Check size={18} aria-hidden="true" />Сохранить напоминание</button><button type="button" className="text-button" onClick={() => { setDraft(null); setError(''); requestAnimationFrame(() => addRef.current?.focus()); }}>Отмена</button></div>
+      <div className="alarm-editor-actions record-actions profile-actions"><button type="button" className="alarm-save" onClick={save}><Check size={18} aria-hidden="true" />Сохранить напоминание</button><button type="button" className="text-button" onClick={() => { setDraft(null); setError(''); requestAnimationFrame(() => addRef.current?.focus()); }}>Отмена</button></div>
     </div> : <button type="button" ref={addRef} className="text-button alarm-add" onClick={() => edit(newSchedule())}><Plus size={19} aria-hidden="true" />Добавить напоминание</button>}
     {error && <div className="form-error" role="alert" ref={errorRef} tabIndex={-1}>{error}</div>}
   </div>;

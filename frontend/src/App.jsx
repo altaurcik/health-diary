@@ -1,4 +1,5 @@
 import AlarmSettings from './AlarmSettings.jsx';
+import WelcomeForm from './WelcomeForm.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AppRoot, Button, Input } from '@telegram-apps/telegram-ui';
 import { Activity, ArrowDownToLine, ArrowRight, Bell, Check, ChevronRight, Clock3, Heart, History, Home, Info, Moon, Plus, Scale, ShieldCheck, SlidersHorizontal, Sun, Trash2, UserRound, X, Monitor, Repeat2 } from 'lucide-react';
@@ -157,48 +158,64 @@ function RecordForm({ kind, existing, seriesId, onSave, onDelete, onCancel }) {
   </section>;
 }
 
-function ProfileForm({ state, onboarding, onSave, onSchedulesChange, onImport, cloud, focusReminders, onCancel, onExport, onTheme, theme }) {
+function ProfileForm({ state, onSave, onSchedulesChange, onImport, cloud, focusReminders, onExport, onTheme, theme }) {
   const [profile, setProfile] = useState({ ...state.profile });
-  const [weight, setWeight] = useState('');
-  const [canMessage, setCanMessage] = useState(cloud?.canMessage);
-  const [notice, setNotice] = useState('');
+  const [panel, setPanel] = useState(focusReminders ? 'alarms' : 'about');
+  const headingRef = useRef(null);
+  useEffect(() => { if (focusReminders) { setPanel('alarms'); requestAnimationFrame(() => headingRef.current?.focus()); } }, [focusReminders]);
   const [schedules, setSchedules] = useState(structuredClone(state.schedules));
-  const remindersRef = useRef(null);
-  useEffect(() => { if (focusReminders) requestAnimationFrame(() => { remindersRef.current?.scrollIntoView({ block: 'start' }); remindersRef.current?.focus({ preventScroll: true }); }); }, [focusReminders]);
+  const [editingAlarm, setEditingAlarm] = useState(false);
+  const [canMessage, setCanMessage] = useState(cloud?.canMessage);
+  const [notice, setNotice] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
+  const errorRef = useRef(null);
+  const update = key => e => { setProfile(p => ({ ...p, [key]: e.target.value })); setError(''); };
   async function changeSchedules(next) {
-    const failure = onboarding ? '' : await onSchedulesChange(next);
+    const failure = await onSchedulesChange(next);
     if (!failure) setSchedules(next);
     return failure;
   }
-  const [error, setError] = useState(''); const errorRef = useRef(null);
-  const update = key => e => setProfile(p => ({ ...p, [key]: e.target.value }));
-  const zoneOptions = [...new Set([state.profile.timezone, 'Europe/Moscow', 'Europe/Kaliningrad', 'Europe/Samara', 'Asia/Yekaterinburg', 'Asia/Novosibirsk', 'Asia/Irkutsk', 'Asia/Vladivostok', 'Europe/Berlin', 'Asia/Tbilisi', 'Asia/Dubai', 'UTC'])];
-  async function submit(e) {
-    e.preventDefault(); let message = validateProfile(profile, schedules);
+  async function submit(event) {
+    event.preventDefault(); if (busy) return;
+    let message = validateProfile(profile, schedules);
     const height = profile.height === '' ? '' : Number(String(profile.height).replace(',', '.'));
-    const parsedWeight = weight === '' ? null : Number(weight.replace(',', '.'));
-    if (parsedWeight != null && (!Number.isFinite(parsedWeight) || parsedWeight < 10 || parsedWeight > 500)) message = 'Вес: число от 10 до 500 кг.';
-    if (!message) message = await onSave({ ...profile, height, theme }, schedules, parsedWeight) || '';
+    if (!message) {
+      setBusy(true);
+      try { message = await onSave({ ...profile, height, theme }, schedules, null) || ''; }
+      finally { setBusy(false); }
+    }
     if (message) { setError(message); requestAnimationFrame(() => errorRef.current?.focus()); }
+    else setNotice('Настройки сохранены.');
   }
-  return <section className="page profile-page"><div className="page-title"><h1>{onboarding ? 'Ваш дневник' : 'Профиль'}</h1><p>{onboarding ? 'Настроим его под ваш ритм.' : 'Всё самое важное — под рукой.'}</p></div>
-    {onboarding && <div className="privacy-note"><Icon as={ShieldCheck} /><p>{cloud ? 'Записи сохраняются на сервере и доступны только вашему Telegram-аккаунту. Можно скачать резервную копию в JSON.' : 'Записи хранятся только в этом браузере. Синхронизации пока нет. Экспортируйте копию, чтобы не потерять историю при очистке браузера.'}</p></div>}
-    <section className="theme-panel"><h2>Оформление</h2><div className="theme-options">{[['system', 'Система', Monitor], ['dark', 'Тёмная', Moon], ['light', 'Светлая', Sun]].map(([value, label, icon]) => <button type="button" key={value} aria-pressed={theme === value} className={theme === value ? 'selected' : ''} onClick={() => onTheme(value)}><Icon as={icon} /><span>{label}</span></button>)}</div></section>
-    <form onSubmit={submit}>
-      <section className="profile-section alarms-section"><h2 ref={remindersRef} tabIndex={-1}>Напоминания об измерениях</h2><p className="small-note">{onboarding ? 'Можно добавить сейчас или позже.' : 'Изменения напоминаний сохраняются сразу.'} {cloud ? 'Напоминания приходят сообщениями от бота, даже когда дневник закрыт.' : import.meta.env.PROD ? 'В демо сообщения не отправляются. Для настоящих напоминаний откройте дневник в Telegram.' : 'Локальный режим: напоминания появляются только на открытом сайте.'}</p>{cloud && !canMessage && <button type="button" className="text-button" onClick={async () => { const allowed = await cloud.requestMessages(); setCanMessage(allowed); setNotice(allowed ? 'Сообщения от бота разрешены.' : 'Откройте @bpjournalbot и нажмите «Начать», чтобы получать напоминания.'); }}>Разрешить сообщения от бота</button>}{notice && <p className="small-note" role="status">{notice}</p>}<AlarmSettings schedules={schedules} onChange={changeSchedules} /></section>
-      <section className="profile-section"><h2>О вас</h2><p className="small-note">Можно заполнить сейчас или позже.</p><Field id="birth-date" label="Дата рождения" type="date" value={profile.birthDate} max={dayKey(Date.now(), validZone(profile.timezone) ? profile.timezone : state.profile.timezone)} min="1900-01-01" onChange={update('birthDate')} />
+  const zones = [...new Set([state.profile.timezone, deviceZone(), 'Europe/Moscow', 'UTC'])];
+  return <section className="page profile-page compact-inputs">
+    <div className="page-title"><h1 ref={headingRef} tabIndex={-1}>{editingAlarm ? 'Напоминание' : 'Профиль'}</h1></div>
+    {!editingAlarm && <Choice value={panel} options={[["about", "О вас"], ["alarms", "Напоминания"], ["more", "Ещё"]]} label="Раздел профиля" onChange={value => { setPanel(value); setError(''); setNotice(''); }} />}
+    {panel === 'about' && <form onSubmit={submit} className="profile-panel">
+      <p className="small-note">Все поля необязательны.</p>
+      <Field id="birth-date" label="Дата рождения" type="date" value={profile.birthDate} max={dayKey(Date.now(), validZone(profile.timezone) ? profile.timezone : state.profile.timezone)} min="1900-01-01" onChange={update('birthDate')} />
       <div className="two-fields"><SelectField id="sex" label="Пол" value={profile.sex} onChange={update('sex')}><option value="">Не указан</option><option value="female">Женский</option><option value="male">Мужской</option><option value="unspecified">Не указывать</option></SelectField><Field id="height" label="Рост, см" inputMode="decimal" placeholder="178" value={profile.height} onChange={update('height')} /></div>
-      {onboarding && <Field id="initial-weight" label="Текущий вес, кг" hint="Станет первой записью в дневнике" inputMode="decimal" placeholder="76,4" value={weight} onChange={e => setWeight(e.target.value)} />}
-      <div className="field"><label htmlFor="timezone">Часовой пояс расписания</label><input className="native-input" id="timezone" list="timezones" value={profile.timezone} onChange={update('timezone')} required spellCheck={false} /><datalist id="timezones">{zoneOptions.map(z => <option key={z} value={z} />)}</datalist><small>Расписание следует этому поясу. Записи и история используют местное время устройства.</small></div>
-    </section>
+      <details className="profile-timezone"><summary>Часовой пояс: {profile.timezone.replaceAll('_', ' ')}<Icon as={ChevronRight} size={16} /></summary>
+      <div className="field"><label htmlFor="timezone">Часовой пояс напоминаний</label><input className="native-input" id="timezone" list="timezones" value={profile.timezone} onChange={update('timezone')} required spellCheck={false} /><datalist id="timezones">{zones.map(zone => <option key={zone} value={zone} />)}</datalist><small>Время записей определяется вашим устройством.</small></div>
+      </details>
       {error && <div className="form-error" role="alert" tabIndex={-1} ref={errorRef}>{error}</div>}
-      <Button size="l" stretched className="primary-button" type="submit" before={<Icon as={Check} />}>{onboarding ? 'Начать вести дневник' : 'Сохранить настройки'}</Button>
-      {onboarding && <button className="text-button full" type="button" onClick={onCancel}>{cloud ? 'Заполнить позже' : 'Вернуться к примеру'}</button>}
-    </form>
-    {!onboarding && <section className="profile-section"><h2>Ваши данные</h2><button className="settings-row" onClick={onExport}><Icon as={ArrowDownToLine} /><span>Скачать копию дневника<small>Все записи и настройки в JSON</small></span><Icon as={ChevronRight} size={17} /></button>{cloud && <div className="field"><label htmlFor="import-diary">Перенести записи из JSON-копии</label><input id="import-diary" className="native-input" type="file" accept="application/json,.json" onChange={async e => {
-      const input = e.currentTarget; const file = input.files?.[0]; if (!file) return;
-      try { if (file.size > 4 * 1024 * 1024) throw new Error('Файл больше 4 МБ.'); const message = await onImport(validateState(JSON.parse(await file.text()))); if (message) throw new Error(message); setNotice('Записи из копии добавлены.'); } catch (error) { setError(error.message); requestAnimationFrame(() => errorRef.current?.focus()); } finally { input.value = ''; }
-    }} /><small>Добавятся измерения с новыми идентификаторами. Настройки и существующие записи останутся.</small></div>}<p className="small-note">{cloud ? 'Дневник хранится на сервере и привязан к вашему Telegram-аккаунту.' : 'Хранится на этом устройстве, в этом браузере. Очистка данных сайта удалит историю.'}</p></section>}
+      <div className="record-actions profile-actions"><Button size="l" stretched className="primary-button" type="submit" disabled={busy} before={<Icon as={Check} />}>{busy ? 'Сохраняем…' : 'Сохранить'}</Button></div>
+    </form>}
+    {panel === 'alarms' && <div className="profile-panel alarms-section">
+      {!editingAlarm && <p className="small-note">Выберите время и дни. Изменения сохраняются сразу.</p>}
+      <AlarmSettings schedules={schedules} onChange={changeSchedules} onEditingChange={setEditingAlarm} />
+      {!editingAlarm && <><p className="small-note reminder-foot">{cloud ? 'Сообщения приходят от @bpjournalbot, даже когда дневник закрыт.' : import.meta.env.PROD ? 'В демо сообщения не отправляются.' : 'Локальный режим: напоминания видны, пока сайт открыт.'}</p>{cloud && !canMessage && <button type="button" className="text-button" onClick={async () => { const allowed = await cloud.requestMessages(); setCanMessage(allowed); setNotice(allowed ? 'Сообщения от бота разрешены.' : 'Откройте @bpjournalbot и нажмите «Начать».'); }}>Разрешить сообщения от бота</button>}</>}
+    </div>}
+    {panel === 'more' && <div className="profile-panel">
+      <section className="theme-panel"><h2>Оформление</h2><div className="theme-options">{[['system', 'Система', Monitor], ['dark', 'Тёмная', Moon], ['light', 'Светлая', Sun]].map(([value, label, icon]) => <button type="button" key={value} aria-pressed={theme === value} className={theme === value ? 'selected' : ''} onClick={() => onTheme(value)}><Icon as={icon} /><span>{label}</span></button>)}</div></section>
+      <section className="profile-section"><h2>Ваши данные</h2><button className="settings-row" onClick={onExport}><Icon as={ArrowDownToLine} /><span>Скачать копию дневника<small>Все записи и настройки в JSON</small></span><Icon as={ChevronRight} size={17} /></button>
+        {cloud && <div className="field"><label htmlFor="import-diary">Перенести записи из JSON-копии</label><input id="import-diary" className="native-input" type="file" accept="application/json,.json" onChange={async event => {
+          const input = event.currentTarget, file = input.files?.[0]; if (!file) return;
+          try { if (file.size > 4 * 1024 * 1024) throw new Error('Файл больше 4 МБ.'); const message = await onImport(validateState(JSON.parse(await file.text()))); if (message) throw new Error(message); setNotice('Записи из копии добавлены.'); } catch (error) { setError(error.message); } finally { input.value = ''; }
+        }} /><small>Добавятся новые измерения; настройки не заменяются.</small></div>}
+        <p className="small-note">{cloud ? 'Дневник хранится на сервере и привязан к Telegram-аккаунту.' : 'Дневник хранится в этом браузере. Очистка данных сайта удалит записи.'}</p>
+      </section>{error && <div className="form-error" role="alert">{error}</div>}
+    </div>}
+    {notice && <p className="small-note" role="status">{notice}</p>}
   </section>;
 }
 
@@ -293,11 +310,11 @@ export default function App({ cloud = null, previewOnly = false }) {
   const series = savedRecord?.seriesId ? seriesMean(data.records, savedRecord.seriesId) : null;
   const activeView = form ? 'form' : view;
   return <AppRoot appearance={appearance} platform="ios" className={`healthnote ${appearance}`}>
-    <div className={`app-shell${form ? ' has-record-form' : ''}`}><header className="app-header"><button className="brand" aria-label="Healthnote — на главную" onClick={() => { setForm(null); setView('today'); }}><span className="brand-mark"><Icon as={Activity} size={23} /></span><span>healthnote<span className="brand-dot">.</span></span></button>{activeView === 'form' || view === 'onboarding' ? <button className="icon-button" aria-label="Закрыть" onClick={() => { setForm(null); setView('today'); }}><Icon as={X} /></button> : <button className="icon-button" aria-label="Изменить тему" title="Изменить тему" onClick={() => changeTheme(appearance === 'dark' ? 'light' : 'dark')}><Icon as={appearance === 'dark' ? Sun : Moon} /></button>}</header>
-      {demo && <div className="demo-banner"><span><span className="status-dot" />Демо · вымышленные данные</span>{!previewOnly && <button onClick={() => { setForm(null); setView('onboarding'); }}>Начать свой<Icon as={ArrowRight} size={14} /></button>}</div>}
+    <div className={`app-shell${form || view === 'onboarding' || view === 'profile' ? ' has-record-form' : ''}`}><header className="app-header"><button className="brand" aria-label="Healthnote — на главную" onClick={() => { if (view === 'onboarding') return; setForm(null); setView('today'); }}><span className="brand-mark"><Icon as={Activity} size={23} /></span><span>healthnote<span className="brand-dot">.</span></span></button>{view === 'onboarding' ? null : activeView === 'form' ? <button className="icon-button" aria-label="Закрыть" onClick={() => { setForm(null); setView('today'); }}><Icon as={X} /></button> : <button className="icon-button" aria-label="Изменить тему" title="Изменить тему" onClick={() => changeTheme(appearance === 'dark' ? 'light' : 'dark')}><Icon as={appearance === 'dark' ? Sun : Moon} /></button>}</header>
+      {demo && view !== 'onboarding' && <div className="demo-banner"><span><span className="status-dot" />Демо · вымышленные данные</span>{!previewOnly && <button onClick={() => { setForm(null); setView('onboarding'); }}>Начать свой<Icon as={ArrowRight} size={14} /></button>}</div>}
       {error && <div role="alert" className="persistent-error"><Icon as={Info} /><span>{error}</span></div>}
       <main id="main-content">
-        {form ? <RecordForm key={form.existing?.id || `${form.kind}-${form.seriesId || 'new'}`} kind={form.kind} existing={form.existing} seriesId={form.seriesId} onSave={saveRecord} onDelete={deleteRecord} onCancel={() => setForm(null)} /> : view === 'profile' || view === 'onboarding' ? <ProfileForm key={`${view}-${demo}`} state={view === 'onboarding' ? emptyState(theme) : data} onboarding={view === 'onboarding'} onSave={saveProfile} onSchedulesChange={saveSchedules} onImport={importData} cloud={cloud} focusReminders={focusReminders && view === 'profile'} onCancel={() => setView('today')} onExport={exportData} onTheme={changeTheme} theme={theme} /> : <div className="page">
+        {form ? <RecordForm key={form.existing?.id || `${form.kind}-${form.seriesId || 'new'}`} kind={form.kind} existing={form.existing} seriesId={form.seriesId} onSave={saveRecord} onDelete={deleteRecord} onCancel={() => setForm(null)} /> : view === 'onboarding' ? <WelcomeForm profile={emptyState(theme).profile} cloud={cloud} onSave={saveProfile} /> : view === 'profile' ? <ProfileForm key={`profile-${demo}`} state={data} onSave={saveProfile} onSchedulesChange={saveSchedules} onImport={importData} cloud={cloud} focusReminders={focusReminders} onExport={exportData} onTheme={changeTheme} theme={theme} /> : <div className="page">
           <div className="page-title"><div><h1>{view === 'today' ? 'Сегодня' : 'История'}</h1><p>{view === 'today' ? formatDate(clock, zone, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Каждое измерение — часть картины.'}</p></div>{view === 'today' && <span className="day-count"><Check size={14} aria-hidden="true" />{todayCount ? `${todayCount} ${todayCount === 1 ? 'запись' : todayCount < 5 ? 'записи' : 'записей'}` : 'Новый день'}</span>}</div>
           {savedRecord?.kind === 'bp' && <div className="series-notice"><div><Icon as={Check} /><span>{series?.count > 1 ? `Среднее серии: ${number(series.avg)} / ${number(series.lower)} · ${series.count} замера` : 'Измерение записано'}</span><button className="icon-button" aria-label="Закрыть предложение повтора" onClick={() => setSavedRecord(null)}><Icon as={X} size={16} /></button></div><button className="text-button" onClick={() => openRecord('bp', null, { seriesId: savedRecord.seriesId || uid(), seriesSource: savedRecord.id })}><Icon as={Repeat2} size={16} />Добавить повторный замер</button></div>}
           {view === 'today' && <><section className="measurements" aria-label="Средние значения за последние 7 дней">
