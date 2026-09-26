@@ -5,6 +5,10 @@
 Повтор установки требует отдельного подтверждения владельца. Код и workflow
 можно тестировать/публиковать, пока `DEPLOY_ENABLED` не включён.
 
+Первый CI-запуск [36268388488](https://github.com/altaurcik/health-diary/actions/runs/36268388488)
+для cccc214 прошёл: model-тесты, реальные HTTP/PostgreSQL integration, frontend
+тесты/smoke/build и артефакт. Deploy пропущен условием DEPLOY_ENABLED.
+
 ## Схема
 
 - Бот: `@bpjournalbot`; токен не включать в Git или frontend.

@@ -1,7 +1,7 @@
 """Read-only GitHub API via the existing git credential helper. Never prints credentials."""
 import json, subprocess, urllib.request, urllib.error
 REPO='altaurcik/health-diary'
-p=subprocess.run(['/Library/Developer/CommandLineTools/usr/bin/git','credential','fill'],input='protocol=https\nhost=github.com\nusername=altaurcik\n\n',text=True,capture_output=True,timeout=30)
+p=subprocess.run(['/Library/Developer/CommandLineTools/usr/bin/git','credential','fill'],input='protocol=https\nhost=github.com\n\n',text=True,capture_output=True,timeout=30)
 credential=dict(line.split('=',1) for line in p.stdout.splitlines() if '=' in line)
 if not credential.get('password'): raise SystemExit('GitHub credential unavailable')
 request=urllib.request.Request(f'https://api.github.com/repos/{REPO}/actions/runs?per_page=3',headers={'Authorization':'Bearer '+credential['password'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})

@@ -81,8 +81,8 @@ Workflow и инструкции — [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 - 2026-09-26: подготовлены Telegram SDK/вход, Python API, сохранение дневника с
   проверкой revision, планировщик и GitHub Actions build/deploy. Локально прошли
-  26 frontend и 8 backend model-тестов, build. PostgreSQL integration включена
-  в CI. Это подготовка к установке, не подтверждение production.
+  26 frontend и 8 backend model-тестов, build. PostgreSQL integration прошла
+  в GitHub Actions (run 36268388488), как и сборка/упаковка; deploy пропущен. Это подготовка к установке, не подтверждение production.
   Read-only SSH подтвердил DNS, существующую БД и занятый VPN порт 443.
   Привилегированный bootstrap отклонён auto-review; изменения сервера не
   выполнялись. Детали — [DEPLOYMENT.md](docs/DEPLOYMENT.md).
