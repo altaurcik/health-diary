@@ -136,16 +136,23 @@ function RecordForm({ kind, existing, seriesId, onSave, onDelete, onCancel }) {
     const result = await onSave(record);
     if (result) { setError(result); requestAnimationFrame(() => errorRef.current?.focus()); }
   }
-  return <section className="page form-page"><div className="form-title"><span className={`large-icon ${kind}`}><Icon as={METRICS[kind].icon} size={27} /></span><h1>{existing ? 'Изменить запись' : kind === 'bp' ? (seriesId ? 'Повторное измерение' : 'Записать давление') : 'Записать вес'}</h1><p>{kind === 'bp' ? 'Показания вашего тонометра' : 'Небольшой шаг к полной картине'}</p></div>
+  return <section className="page form-page"><div className="form-title"><h1>{existing ? 'Изменить запись' : kind === 'bp' ? (seriesId ? 'Повторное измерение' : 'Записать давление') : 'Записать вес'}</h1></div>
     <form onSubmit={submit}>
-      {kind === 'bp' ? <><div className="pressure-inputs"><Field id="systolic" label="Верхнее" placeholder="128" inputMode="numeric" required value={fields.systolic} onChange={update('systolic')} /><span className="input-slash">/</span><Field id="diastolic" label="Нижнее" placeholder="82" inputMode="numeric" required value={fields.diastolic} onChange={update('diastolic')} /></div><p className="unit-caption">мм рт. ст.</p><Field id="pulse" label="Пульс" hint="Необязательно · уд/мин" placeholder="71" inputMode="numeric" value={fields.pulse} onChange={update('pulse')} /></> : <Field id="weight" label="Вес, кг" placeholder="76,4" inputMode="decimal" required value={fields.weight} onChange={update('weight')} />}
+      {kind === 'bp' ? <>
+        <div className="measurement-values">
+          <Field id="systolic" label="Верхнее" placeholder="128" inputMode="numeric" required value={fields.systolic} onChange={update('systolic')} />
+          <Field id="diastolic" label="Нижнее" placeholder="82" inputMode="numeric" required value={fields.diastolic} onChange={update('diastolic')} />
+          <Field id="pulse" label="Пульс" placeholder="71" inputMode="numeric" value={fields.pulse} onChange={update('pulse')} />
+        </div>
+        <p className="measurement-units">Давление · мм рт. ст. <span>Пульс · уд/мин, необязательно</span></p>
+      </> : <Field id="weight" label="Вес, кг" placeholder="76,4" inputMode="decimal" required value={fields.weight} onChange={update('weight')} />}
+
       <Field id="measurement-time" label="Местные дата и время" hint={`Время устройства · ${zone.replaceAll('_', ' ')}`} type="datetime-local" required value={fields.at} onChange={update('at')} />
       {existing?.timeZone && existing.timeZone !== zone && <p className="small-note">При измерении: {formatDate(existing.at, existing.timeZone)} в {formatTime(existing.at, existing.timeZone)} · {existing.timeZone.replaceAll('_', ' ')}.</p>}
-      <div className="field"><label htmlFor="comment">Комментарий <span className="muted">· необязательно</span></label><textarea id="comment" rows={3} placeholder="Например, после прогулки" maxLength={300} value={fields.comment} onChange={update('comment')} /><small>{fields.comment.length}/300</small></div>
+      <div className="field"><label htmlFor="comment">Комментарий <span className="muted">· необязательно</span></label><textarea id="comment" rows={2} placeholder="Например, после прогулки" maxLength={300} value={fields.comment} onChange={update('comment')} /><small className="comment-count">{fields.comment.length}/300</small></div>
       {error && <div role="alert" tabIndex={-1} ref={errorRef} className="form-error">{error}</div>}
-      <Button className="primary-button" type="submit" size="l" stretched before={<Icon as={Check} />}>Сохранить измерение</Button>
+      <div className="record-actions"><Button className="primary-button" type="submit" size="l" stretched before={<Icon as={Check} />}>Сохранить</Button><button type="button" className="text-button" onClick={onCancel}>Отмена</button></div>
       {existing && <div className="delete-zone">{confirmDelete ? <><p>Удалить эту запись? Вернуть её будет нельзя.</p><div className="button-pair"><button type="button" className="text-button" onClick={() => setConfirmDelete(false)}>Оставить</button><button type="button" className="danger-button" onClick={async () => { const result = await onDelete(existing.id); if (result) setError(result); }}>Да, удалить</button></div></> : <button type="button" className="text-button danger" onClick={() => setConfirmDelete(true)}><Icon as={Trash2} size={17} />Удалить запись</button>}</div>}
-      <button type="button" className="text-button full" onClick={onCancel}>Отмена</button>
     </form>
   </section>;
 }
@@ -286,7 +293,7 @@ export default function App({ cloud = null, previewOnly = false }) {
   const series = savedRecord?.seriesId ? seriesMean(data.records, savedRecord.seriesId) : null;
   const activeView = form ? 'form' : view;
   return <AppRoot appearance={appearance} platform="ios" className={`healthnote ${appearance}`}>
-    <div className="app-shell"><header className="app-header"><button className="brand" aria-label="Healthnote — на главную" onClick={() => { setForm(null); setView('today'); }}><span className="brand-mark"><Icon as={Activity} size={23} /></span><span>healthnote<span className="brand-dot">.</span></span></button>{activeView === 'form' || view === 'onboarding' ? <button className="icon-button" aria-label="Закрыть" onClick={() => { setForm(null); setView('today'); }}><Icon as={X} /></button> : <button className="icon-button" aria-label="Изменить тему" title="Изменить тему" onClick={() => changeTheme(appearance === 'dark' ? 'light' : 'dark')}><Icon as={appearance === 'dark' ? Sun : Moon} /></button>}</header>
+    <div className={`app-shell${form ? ' has-record-form' : ''}`}><header className="app-header"><button className="brand" aria-label="Healthnote — на главную" onClick={() => { setForm(null); setView('today'); }}><span className="brand-mark"><Icon as={Activity} size={23} /></span><span>healthnote<span className="brand-dot">.</span></span></button>{activeView === 'form' || view === 'onboarding' ? <button className="icon-button" aria-label="Закрыть" onClick={() => { setForm(null); setView('today'); }}><Icon as={X} /></button> : <button className="icon-button" aria-label="Изменить тему" title="Изменить тему" onClick={() => changeTheme(appearance === 'dark' ? 'light' : 'dark')}><Icon as={appearance === 'dark' ? Sun : Moon} /></button>}</header>
       {demo && <div className="demo-banner"><span><span className="status-dot" />Демо · вымышленные данные</span>{!previewOnly && <button onClick={() => { setForm(null); setView('onboarding'); }}>Начать свой<Icon as={ArrowRight} size={14} /></button>}</div>}
       {error && <div role="alert" className="persistent-error"><Icon as={Info} /><span>{error}</span></div>}
       <main id="main-content">

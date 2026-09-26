@@ -343,3 +343,24 @@ h3 { font-size: 16px; font-weight: 650; }
 .cloud-gate a, .cloud-gate button { display: block; width: 100%; padding: 16px; margin-top: 12px; border: 0; border-radius: 12px; background: var(--accent); color: var(--on-accent); text-align: center; text-decoration: none; }
 .app-header { padding-top: calc(20px + var(--tg-safe-top, 0px)); }
 .bottom-nav { padding-bottom: calc(12px + max(env(safe-area-inset-bottom), var(--tg-safe-bottom, 0px))); }
+
+/* Compact measurement form: keep actual touch targets large, remove decorative space. */
+.has-record-form .app-header { min-height: 52px; padding: calc(4px + var(--tg-safe-top, 0px)) 24px 4px; }
+.has-record-form .brand { font-size: 18px; gap: 8px; }
+.has-record-form .brand-mark { width: 28px; height: 28px; border-radius: 8px; }
+.form-page { padding-top: 12px; padding-bottom: calc(12px + max(env(safe-area-inset-bottom), var(--tg-safe-bottom, 0px))); }
+.form-title { margin-bottom: 16px; }
+.form-title h1 { font-size: 22px; line-height: 1.3; margin-top: 0; }
+.form-page .field { gap: 5px; margin-bottom: 12px; }
+.form-page .diary-input, .form-page .diary-input input { min-height: 48px; }
+.form-page .diary-input input { height: 48px; padding: 8px 10px; font-size: 16px; }
+.measurement-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.measurement-values .field { margin-bottom: 0; }
+.measurement-values .diary-input input { font-size: 24px; font-weight: 550; text-align: center; }
+.measurement-units { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 3px 10px; font-size: 10px; line-height: 1.5; color: var(--muted); margin: 6px 0 14px; }
+.form-page textarea { min-height: 64px; padding: 9px 10px; line-height: 1.4; }
+.form-page .comment-count { align-self: flex-end; font-size: 10px; }
+.record-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; position: sticky; bottom: 0; padding: 8px 0; background: var(--bg); z-index: 1; }
+.record-actions .primary-button { min-height: 48px; height: 48px; }
+.record-actions .text-button { padding-inline: 4px; }
+.form-page input, .form-page textarea { scroll-margin-block: 20px 80px; }
