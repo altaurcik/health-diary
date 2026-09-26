@@ -1,0 +1,558 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-26T18:51:32.872514+00:00",
+  "title": "Design System: Healthnote",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Графит / Светлая бумага · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.01126 217.07)",
+          "oklch(26% 0.01126 217.07)",
+          "oklch(38% 0.01126 217.07)",
+          "oklch(49% 0.01126 217.07)",
+          "oklch(61% 0.01126 217.07)",
+          "oklch(72% 0.01126 217.07)",
+          "oklch(84% 0.01126 217.07)",
+          "oklch(95% 0.01126 217.07)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Приборная поверхность · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.01646 216.35)",
+          "oklch(26% 0.01646 216.35)",
+          "oklch(38% 0.01646 216.35)",
+          "oklch(49% 0.01646 216.35)",
+          "oklch(61% 0.01646 216.35)",
+          "oklch(72% 0.01646 216.35)",
+          "oklch(84% 0.01646 216.35)",
+          "oklch(95% 0.01646 216.35)"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Приподнятый тон · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.02236 214.93)",
+          "oklch(26% 0.02236 214.93)",
+          "oklch(38% 0.02236 214.93)",
+          "oklch(49% 0.02236 214.93)",
+          "oklch(61% 0.02236 214.93)",
+          "oklch(72% 0.02236 214.93)",
+          "oklch(84% 0.02236 214.93)",
+          "oklch(95% 0.02236 214.93)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Основной текст · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.00887 179.60)",
+          "oklch(26% 0.00887 179.60)",
+          "oklch(38% 0.00887 179.60)",
+          "oklch(49% 0.00887 179.60)",
+          "oklch(61% 0.00887 179.60)",
+          "oklch(72% 0.00887 179.60)",
+          "oklch(84% 0.00887 179.60)",
+          "oklch(95% 0.00887 179.60)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Дымчатый шалфей · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.02528 193.44)",
+          "oklch(26% 0.02528 193.44)",
+          "oklch(38% 0.02528 193.44)",
+          "oklch(49% 0.02528 193.44)",
+          "oklch(61% 0.02528 193.44)",
+          "oklch(72% 0.02528 193.44)",
+          "oklch(84% 0.02528 193.44)",
+          "oklch(95% 0.02528 193.44)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Мята · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.09624 176.19)",
+          "oklch(26% 0.09624 176.19)",
+          "oklch(38% 0.09624 176.19)",
+          "oklch(49% 0.09624 176.19)",
+          "oklch(61% 0.09624 176.19)",
+          "oklch(72% 0.09624 176.19)",
+          "oklch(84% 0.09624 176.19)",
+          "oklch(95% 0.09624 176.19)"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "Текст на мяте · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.04309 173.29)",
+          "oklch(26% 0.04309 173.29)",
+          "oklch(38% 0.04309 173.29)",
+          "oklch(49% 0.04309 173.29)",
+          "oklch(61% 0.04309 173.29)",
+          "oklch(72% 0.04309 173.29)",
+          "oklch(84% 0.04309 173.29)",
+          "oklch(95% 0.04309 173.29)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Тонкая граница · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.02606 211.31)",
+          "oklch(26% 0.02606 211.31)",
+          "oklch(38% 0.02606 211.31)",
+          "oklch(49% 0.02606 211.31)",
+          "oklch(61% 0.02606 211.31)",
+          "oklch(72% 0.02606 211.31)",
+          "oklch(84% 0.02606 211.31)",
+          "oklch(95% 0.02606 211.31)"
+        ]
+      },
+      "subtle": {
+        "role": "neutral",
+        "displayName": "Тихий разделитель · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.02228 214.89)",
+          "oklch(26% 0.02228 214.89)",
+          "oklch(38% 0.02228 214.89)",
+          "oklch(49% 0.02228 214.89)",
+          "oklch(61% 0.02228 214.89)",
+          "oklch(72% 0.02228 214.89)",
+          "oklch(84% 0.02228 214.89)",
+          "oklch(95% 0.02228 214.89)"
+        ]
+      },
+      "purple": {
+        "role": "secondary",
+        "displayName": "Приглушённая лаванда · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.09925 292.46)",
+          "oklch(26% 0.09925 292.46)",
+          "oklch(38% 0.09925 292.46)",
+          "oklch(49% 0.09925 292.46)",
+          "oklch(61% 0.09925 292.46)",
+          "oklch(72% 0.09925 292.46)",
+          "oklch(84% 0.09925 292.46)",
+          "oklch(95% 0.09925 292.46)"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Коралл ошибки · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.10065 20.21)",
+          "oklch(26% 0.10065 20.21)",
+          "oklch(38% 0.10065 20.21)",
+          "oklch(49% 0.10065 20.21)",
+          "oklch(61% 0.10065 20.21)",
+          "oklch(72% 0.10065 20.21)",
+          "oklch(84% 0.10065 20.21)",
+          "oklch(95% 0.10065 20.21)"
+        ]
+      },
+      "danger-bg": {
+        "role": "secondary",
+        "displayName": "Поверхность ошибки · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.04119 17.41)",
+          "oklch(26% 0.04119 17.41)",
+          "oklch(38% 0.04119 17.41)",
+          "oklch(49% 0.04119 17.41)",
+          "oklch(61% 0.04119 17.41)",
+          "oklch(72% 0.04119 17.41)",
+          "oklch(84% 0.04119 17.41)",
+          "oklch(95% 0.04119 17.41)"
+        ]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "Контур фокуса · тёмная",
+        "tonalRamp": [
+          "oklch(15% 0.09386 175.52)",
+          "oklch(26% 0.09386 175.52)",
+          "oklch(38% 0.09386 175.52)",
+          "oklch(49% 0.09386 175.52)",
+          "oklch(61% 0.09386 175.52)",
+          "oklch(72% 0.09386 175.52)",
+          "oklch(84% 0.09386 175.52)",
+          "oklch(95% 0.09386 175.52)"
+        ]
+      },
+      "light-bg": {
+        "role": "neutral",
+        "displayName": "Графит / Светлая бумага · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.00444 179.74)",
+          "oklch(26% 0.00444 179.74)",
+          "oklch(38% 0.00444 179.74)",
+          "oklch(49% 0.00444 179.74)",
+          "oklch(61% 0.00444 179.74)",
+          "oklch(72% 0.00444 179.74)",
+          "oklch(84% 0.00444 179.74)",
+          "oklch(95% 0.00444 179.74)"
+        ]
+      },
+      "light-surface": {
+        "role": "neutral",
+        "displayName": "Приборная поверхность · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.00000 89.88)",
+          "oklch(26% 0.00000 89.88)",
+          "oklch(38% 0.00000 89.88)",
+          "oklch(49% 0.00000 89.88)",
+          "oklch(61% 0.00000 89.88)",
+          "oklch(72% 0.00000 89.88)",
+          "oklch(84% 0.00000 89.88)",
+          "oklch(95% 0.00000 89.88)"
+        ]
+      },
+      "light-raised": {
+        "role": "neutral",
+        "displayName": "Приподнятый тон · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.01035 174.27)",
+          "oklch(26% 0.01035 174.27)",
+          "oklch(38% 0.01035 174.27)",
+          "oklch(49% 0.01035 174.27)",
+          "oklch(61% 0.01035 174.27)",
+          "oklch(72% 0.01035 174.27)",
+          "oklch(84% 0.01035 174.27)",
+          "oklch(95% 0.01035 174.27)"
+        ]
+      },
+      "light-text": {
+        "role": "neutral",
+        "displayName": "Основной текст · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.02697 195.72)",
+          "oklch(26% 0.02697 195.72)",
+          "oklch(38% 0.02697 195.72)",
+          "oklch(49% 0.02697 195.72)",
+          "oklch(61% 0.02697 195.72)",
+          "oklch(72% 0.02697 195.72)",
+          "oklch(84% 0.02697 195.72)",
+          "oklch(95% 0.02697 195.72)"
+        ]
+      },
+      "light-muted": {
+        "role": "neutral",
+        "displayName": "Дымчатый шалфей · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.02962 193.20)",
+          "oklch(26% 0.02962 193.20)",
+          "oklch(38% 0.02962 193.20)",
+          "oklch(49% 0.02962 193.20)",
+          "oklch(61% 0.02962 193.20)",
+          "oklch(72% 0.02962 193.20)",
+          "oklch(84% 0.02962 193.20)",
+          "oklch(95% 0.02962 193.20)"
+        ]
+      },
+      "light-accent": {
+        "role": "primary",
+        "displayName": "Мята · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.09248 174.15)",
+          "oklch(26% 0.09248 174.15)",
+          "oklch(38% 0.09248 174.15)",
+          "oklch(49% 0.09248 174.15)",
+          "oklch(61% 0.09248 174.15)",
+          "oklch(72% 0.09248 174.15)",
+          "oklch(84% 0.09248 174.15)",
+          "oklch(95% 0.09248 174.15)"
+        ]
+      },
+      "light-on-accent": {
+        "role": "primary",
+        "displayName": "Текст на мяте · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.00000 89.88)",
+          "oklch(26% 0.00000 89.88)",
+          "oklch(38% 0.00000 89.88)",
+          "oklch(49% 0.00000 89.88)",
+          "oklch(61% 0.00000 89.88)",
+          "oklch(72% 0.00000 89.88)",
+          "oklch(84% 0.00000 89.88)",
+          "oklch(95% 0.00000 89.88)"
+        ]
+      },
+      "light-line": {
+        "role": "neutral",
+        "displayName": "Тонкая граница · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.02100 173.86)",
+          "oklch(26% 0.02100 173.86)",
+          "oklch(38% 0.02100 173.86)",
+          "oklch(49% 0.02100 173.86)",
+          "oklch(61% 0.02100 173.86)",
+          "oklch(72% 0.02100 173.86)",
+          "oklch(84% 0.02100 173.86)",
+          "oklch(95% 0.02100 173.86)"
+        ]
+      },
+      "light-subtle": {
+        "role": "neutral",
+        "displayName": "Тихий разделитель · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.01037 174.26)",
+          "oklch(26% 0.01037 174.26)",
+          "oklch(38% 0.01037 174.26)",
+          "oklch(49% 0.01037 174.26)",
+          "oklch(61% 0.01037 174.26)",
+          "oklch(72% 0.01037 174.26)",
+          "oklch(84% 0.01037 174.26)",
+          "oklch(95% 0.01037 174.26)"
+        ]
+      },
+      "light-purple": {
+        "role": "secondary",
+        "displayName": "Приглушённая лаванда · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.13097 294.61)",
+          "oklch(26% 0.13097 294.61)",
+          "oklch(38% 0.13097 294.61)",
+          "oklch(49% 0.13097 294.61)",
+          "oklch(61% 0.13097 294.61)",
+          "oklch(72% 0.13097 294.61)",
+          "oklch(84% 0.13097 294.61)",
+          "oklch(95% 0.13097 294.61)"
+        ]
+      },
+      "light-danger": {
+        "role": "secondary",
+        "displayName": "Коралл ошибки · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.15063 22.78)",
+          "oklch(26% 0.15063 22.78)",
+          "oklch(38% 0.15063 22.78)",
+          "oklch(49% 0.15063 22.78)",
+          "oklch(61% 0.15063 22.78)",
+          "oklch(72% 0.15063 22.78)",
+          "oklch(84% 0.15063 22.78)",
+          "oklch(95% 0.15063 22.78)"
+        ]
+      },
+      "light-danger-bg": {
+        "role": "secondary",
+        "displayName": "Поверхность ошибки · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.02412 20.73)",
+          "oklch(26% 0.02412 20.73)",
+          "oklch(38% 0.02412 20.73)",
+          "oklch(49% 0.02412 20.73)",
+          "oklch(61% 0.02412 20.73)",
+          "oklch(72% 0.02412 20.73)",
+          "oklch(84% 0.02412 20.73)",
+          "oklch(95% 0.02412 20.73)"
+        ]
+      },
+      "light-focus": {
+        "role": "primary",
+        "displayName": "Контур фокуса · светлая",
+        "tonalRamp": [
+          "oklch(15% 0.09248 174.15)",
+          "oklch(26% 0.09248 174.15)",
+          "oklch(38% 0.09248 174.15)",
+          "oklch(49% 0.09248 174.15)",
+          "oklch(61% 0.09248 174.15)",
+          "oklch(72% 0.09248 174.15)",
+          "oklch(84% 0.09248 174.15)",
+          "oklch(95% 0.09248 174.15)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "display",
+        "purpose": "Последнее давление; на узком экране уменьшается до 54px."
+      },
+      "headline": {
+        "displayName": "headline",
+        "purpose": "Заголовок страницы."
+      },
+      "form-headline": {
+        "displayName": "form-headline",
+        "purpose": "Заголовок ввода."
+      },
+      "section-title": {
+        "displayName": "section-title",
+        "purpose": "Название раздела."
+      },
+      "body": {
+        "displayName": "body",
+        "purpose": "Пояснение страницы."
+      },
+      "field": {
+        "displayName": "field",
+        "purpose": "Обычное поле ввода."
+      },
+      "label": {
+        "displayName": "label",
+        "purpose": "Подпись показателя."
+      },
+      "button": {
+        "displayName": "button",
+        "purpose": "Основное действие."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "selection",
+        "value": "150ms ease-out",
+        "purpose": "Смена фона выбранной метрики."
+      },
+      {
+        "name": "icon-hover",
+        "value": "160ms ease-out",
+        "purpose": "Фон и цвет вспомогательной кнопки."
+      },
+      {
+        "name": "feedback",
+        "value": "180ms ease-out",
+        "purpose": "Переключатель расписания и появление toast; reduced-motion отключает переходы."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-max",
+        "value": "359px"
+      },
+      {
+        "name": "wide-min",
+        "value": "700px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Кнопка primary",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Основное действие",
+      "html": "<button class=\"ds-button-primary\">Сохранить измерение</button>",
+      "css": ".ds-button-primary{font-family:'Manrope Variable',Manrope,sans-serif;cursor:pointer;min-height:52px;border:0;border-radius:14px;padding:0 12px;background:var(--accent,#7ddbc4);color:var(--on-accent,#12342b);font-size:14px;font-weight:700;}.ds-button-primary:hover{filter:brightness(1.06);}.ds-button-primary:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}.ds-button-primary:active:not(:disabled){opacity:.75;}.ds-button-primary:disabled{opacity:.5;cursor:not-allowed;}"
+    },
+    {
+      "name": "Кнопка secondary",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Дополнительное действие",
+      "html": "<button class=\"ds-button-secondary\">Записать вес</button>",
+      "css": ".ds-button-secondary{font-family:'Manrope Variable',Manrope,sans-serif;cursor:pointer;min-height:52px;border:0;border-radius:14px;padding:0 12px;background:var(--raised,#203034);color:var(--text,#edf5f3);font-size:14px;font-weight:700;}.ds-button-secondary:hover{filter:brightness(1.1);}.ds-button-secondary:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}.ds-button-secondary:active:not(:disabled){opacity:.75;}.ds-button-secondary:disabled{opacity:.5;cursor:not-allowed;}"
+    },
+    {
+      "name": "Текстовое действие",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Короткое действие без отдельной поверхности.",
+      "html": "<button class=\"ds-text\">Добавить</button>",
+      "css": ".ds-text{font-family:'Manrope Variable',Manrope,sans-serif;cursor:pointer;min-height:44px;border:0;background:none;color:var(--accent,#7ddbc4);font-size:12px;font-weight:650;padding:0;}.ds-text:hover{text-decoration:underline;text-underline-offset:4px;}.ds-text:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}.ds-text:active{opacity:.75;}"
+    },
+    {
+      "name": "Подтвердить удаление",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Показывается после запроса на удаление.",
+      "html": "<button class=\"ds-danger\">Да, удалить</button>",
+      "css": ".ds-danger{font-family:'Manrope Variable',Manrope,sans-serif;cursor:pointer;min-height:44px;border:0;border-radius:10px;padding:12px 16px;background:var(--danger-bg,#402526);color:var(--danger,#ffaaa9);}.ds-danger:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}.ds-danger:active{opacity:.75;}"
+    },
+    {
+      "name": "Поле измерения",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Подпись остаётся видимой вне поля.",
+      "html": "<label class=\"ds-field\" for=\"ds-weight\">Вес, кг</label><input class=\"ds-input\" id=\"ds-weight\" inputmode=\"decimal\" placeholder=\"76,4\" />",
+      "css": ".ds-field{font-family:'Manrope Variable',Manrope,sans-serif;display:block;font-size:13px;font-weight:600;color:var(--text,#edf5f3);margin-bottom:8px;}.ds-input{font-family:'Manrope Variable',Manrope,sans-serif;min-height:52px;width:100%;border:1px solid var(--line,#304448);border-radius:12px;padding:12px 14px;font-size:16px;line-height:1.5;background:var(--surface,#182326);color:var(--text,#edf5f3);caret-color:var(--accent,#7ddbc4);}.ds-input::placeholder{color:var(--muted,#a2b9b8);opacity:.8;}.ds-input:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}"
+    },
+    {
+      "name": "Выбор показателя",
+      "kind": "chip",
+      "refersTo": "segmented",
+      "description": "Три равных варианта; выбранный имеет отдельный тон.",
+      "html": "<div class=\"ds-segment\" role=\"group\" aria-label=\"Показатель\"><button aria-pressed=\"true\">Давление</button><button aria-pressed=\"false\">Пульс</button><button aria-pressed=\"false\">Вес</button></div>",
+      "css": ".ds-segment{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:4px;border-radius:13px;background:var(--surface,#182326);}.ds-segment button{font-family:'Manrope Variable',Manrope,sans-serif;cursor:pointer;min-height:44px;border:0;border-radius:9px;background:none;color:var(--muted,#a2b9b8);font-size:12px;font-weight:650;transition:background .15s ease-out;}.ds-segment button[aria-pressed=\"true\"]{background:var(--raised,#203034);color:var(--text,#edf5f3);}.ds-segment button:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}.ds-segment button:active{opacity:.75;}@media(prefers-reduced-motion:reduce){.ds-segment button{transition:none;}}"
+    },
+    {
+      "name": "Выбранный период",
+      "kind": "chip",
+      "refersTo": "period-selected",
+      "description": "Период сохраняет комфортную высоту касания.",
+      "html": "<button class=\"ds-period\" aria-pressed=\"true\">Неделя</button>",
+      "css": ".ds-period{font-family:'Manrope Variable',Manrope,sans-serif;cursor:pointer;min-height:44px;border:0;border-radius:8px;padding:5px 3px;background:var(--raised,#203034);color:var(--accent,#7ddbc4);font-size:11px;font-weight:750;}.ds-period:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}.ds-period:active{opacity:.75;}"
+    },
+    {
+      "name": "Карточка показаний",
+      "kind": "card",
+      "refersTo": "summary-card",
+      "description": "Крупное последнее давление, единицы и время. Данные примера.",
+      "html": "<section class=\"ds-summary\"><div class=\"ds-summary-label\">Давление <span>08:30 · демо</span></div><div class=\"ds-pressure\">128 <span>/</span> 82</div><p>мм рт. ст.</p></section>",
+      "css": ".ds-summary{font-family:'Manrope Variable',Manrope,sans-serif;padding:23px 24px 21px;border-radius:24px;background:var(--surface,#182326);color:var(--text,#edf5f3);}.ds-summary-label{display:flex;justify-content:space-between;gap:7px;font-size:13px;font-weight:550;color:var(--muted,#a2b9b8);}.ds-summary-label span{font-size:11px;font-weight:450;}.ds-pressure{display:flex;align-items:baseline;gap:9px;padding-top:13px;font-size:66px;font-weight:550;line-height:1.12;letter-spacing:-2px;font-variant-numeric:tabular-nums;}.ds-pressure span{font-size:42px;font-weight:300;color:var(--muted,#a2b9b8);}.ds-summary p{font-size:11px;color:var(--muted,#a2b9b8);margin:8px 0 0;}@media(max-width:359px){.ds-pressure{font-size:54px;}}"
+    },
+    {
+      "name": "Напоминание",
+      "kind": "card",
+      "refersTo": "reminder-card",
+      "description": "Срок измерения и действие на небольшой поверхности.",
+      "html": "<section class=\"ds-reminder\"><div><strong>Давление</strong><span>Сегодня в 20:00</span></div><button>Добавить</button></section>",
+      "css": ".ds-reminder{font-family:'Manrope Variable',Manrope,sans-serif;display:flex;align-items:center;gap:10px;padding:16px;border-radius:14px;background:var(--surface,#182326);color:var(--text,#edf5f3);}.ds-reminder div{display:flex;flex:1;flex-direction:column;gap:4px;}.ds-reminder strong{font-size:13px;font-weight:650;}.ds-reminder span{font-size:11px;color:var(--muted,#a2b9b8);}.ds-reminder button{font-family:'Manrope Variable',Manrope,sans-serif;cursor:pointer;min-height:44px;border:0;border-radius:9px;padding:0 10px;background:var(--raised,#203034);color:var(--accent,#7ddbc4);font-size:11px;font-weight:650;}.ds-reminder button:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}.ds-reminder button:active{opacity:.75;}"
+    },
+    {
+      "name": "Нижняя навигация",
+      "kind": "nav",
+      "refersTo": "bottom-nav",
+      "description": "Пример локально в панели; в приложении фиксируется у нижнего края.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Основная навигация\"><button aria-current=\"page\"><svg width=\"21\" height=\"21\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z\"/></svg><span>Сегодня</span></button><button><svg width=\"21\" height=\"21\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 1 0 3-6.7L3 8\"/><path d=\"M3 3v5h5M12 7v5l4 2\"/></svg><span>История</span></button><button><svg width=\"21\" height=\"21\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M20 21a8 8 0 0 0-16 0\"/></svg><span>Профиль</span></button></nav>",
+      "css": ".ds-nav{font-family:'Manrope Variable',Manrope,sans-serif;display:grid;grid-template-columns:repeat(3,1fr);width:min(100%,520px);padding:10px 24px calc(12px + env(safe-area-inset-bottom));background:var(--surface,#182326);border-top:1px solid var(--line,#304448);}.ds-nav button{font-family:'Manrope Variable',Manrope,sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:49px;border:0;background:none;color:var(--muted,#a2b9b8);font-size:10px;font-weight:600;}.ds-nav button[aria-current=\"page\"]{color:var(--accent,#7ddbc4);}.ds-nav button[aria-current=\"page\"] svg{stroke-width:2.3;}.ds-nav button:hover{color:var(--text,#edf5f3);}.ds-nav button:focus-visible{outline:2px solid var(--focus,#9df8e0);outline-offset:4px;}.ds-nav button:active{opacity:.75;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Спокойный домашний измерительный прибор",
+    "overview": "Healthnote строится вокруг точных крупных чисел, понятных единиц и спокойного чтения личной истории. Тёмная поверхность с мягким мятным акцентом — подтверждённое предпочтение владельца. Светлый и системный режимы сохраняют ту же иерархию; выбор темы запоминается. Manrope и линейные иконки поддерживают сдержанный, практичный характер.\n\nПлотность рассчитана на вертикальный телефон: одна колонка, ясные группы показаний и короткие действия. Это самостоятельная веб-версия с локальным хранением; будущий Telegram подключается отдельным слоем. Вымышленные записи всегда обозначаются как демонстрационные. Цвет различает элементы интерфейса и линии графика, а не оценивает здоровье.",
+    "keyCharacteristics": [
+      "Крупные табличные цифры, единицы и время рядом с измерением.",
+      "Тональные поверхности без теней и декоративных иллюстраций.",
+      "Тёмная тема по умолчанию; явные светлый и системный режимы.",
+      "Постоянная мобильная навигация и заметный клавиатурный фокус."
+    ],
+    "rules": [
+      {
+        "name": "Color Is Not Diagnosis",
+        "body": "Акцент и дополнительная линия обозначают интерфейс и данные, а не клиническую норму или опасность.",
+        "section": "colors"
+      },
+      {
+        "name": "Numbers First",
+        "body": "Показание читается вместе с единицей и временем; табличные цифры сохраняют устойчивость числовых колонок.",
+        "section": "typography"
+      },
+      {
+        "name": "Tonal Depth",
+        "body": "Иерархию задают фон, поверхность, приподнятый тон и тонкие разделители; тени не используются.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do сохраняйте тёмную тему по умолчанию и доступность светлого и системного режимов.",
+      "Do держите единицы и время рядом с измерениями, а вымышленные данные помечайте как демо.",
+      "Do сохраняйте клавиатурный фокус, подписи полей и текстовое объяснение ошибок.",
+      "Do проверяйте длинные русские подписи на узком экране, включая ширину 320 px.",
+      "Do используйте существующие SVG-иконки Lucide с согласованной толщиной линии и скрывайте декоративные иконки от screen reader.",
+      "Do учитывайте safe area, экранную клавиатуру и настройку уменьшения движения."
+    ],
+    "donts": [
+      "Don't используйте цвет для медицинских оценок «норма/опасно».",
+      "Don't выдавайте локальное хранение, демо или напоминания открытого сайта за серверную синхронизацию либо Telegram-интеграцию.",
+      "Don't скрывайте подписи действий многоточием ради сохранения композиции.",
+      "Don't добавляйте рекламный hero, отзывы или декоративные иллюстрации в рабочие экраны дневника."
+    ]
+  }
+}

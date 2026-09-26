@@ -31,4 +31,5 @@ dist/
 
 # Project-local tool caches
 /.cache/
-/.impeccable/
+/.impeccable/*
+!/.impeccable/design.json
