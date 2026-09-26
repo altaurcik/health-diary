@@ -15,6 +15,8 @@
 Telegram UI — библиотека приложения, а не skill. Её зависимости зафиксированы
 в `frontend/package.json` и `frontend/package-lock.json`. Готовых экранов,
 сборщика, сервера разработки, backend и подключения к Telegram пока нет.
+`frontend/.npmrc` закрепляет кеш npm в `.cache/npm` проекта для всех
+локальных команд, включая `npm run` и `npm ls`.
 
 ## Подключение skills
 
