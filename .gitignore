@@ -28,3 +28,7 @@ __pycache__/
 .venv/
 node_modules/
 dist/
+
+# Project-local tool caches
+/.cache/
+/.impeccable/
