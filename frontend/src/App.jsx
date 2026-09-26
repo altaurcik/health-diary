@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import AlarmSettings from './AlarmSettings.jsx';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AppRoot, Button, Input } from '@telegram-apps/telegram-ui';
 import { Activity, ArrowDownToLine, ArrowRight, Bell, Check, ChevronRight, Clock3, Heart, History, Home, Info, Moon, Plus, Scale, ShieldCheck, SlidersHorizontal, Sun, Trash2, UserRound, X, Monitor, Repeat2 } from 'lucide-react';
-import { STORAGE_KEY, PERIODS, uid, number, dayKey, formTime, formatDate, formatTime, emptyState, loadState, saveState, sorted, selectRecords, stats, chartData, seriesMean, bmi, reminders, makeDemo, validZone, validateRecord, validateProfile, deviceZone, timeMetadata, recordTiming, localTimeCoordinate, sevenDaySummary, summaryCoverage } from './data.js';
+import { STORAGE_KEY, PERIODS, uid, number, dayKey, formTime, formatDate, formatTime, emptyState, loadState, saveState, sorted, selectRecords, stats, chartData, chartWindow, seriesMean, bmi, reminders, makeDemo, validZone, validateRecord, validateProfile, validateState, deviceZone, timeMetadata, recordTiming, localTimeCoordinate, sevenDaySummary, summaryCoverage } from './data.js';
 
 const METRICS = { bp: { label: 'Давление', unit: 'мм рт. ст.', icon: Activity }, pulse: { label: 'Пульс', unit: 'уд/мин', icon: Heart }, weight: { label: 'Вес', unit: 'кг', icon: Scale } };
-const DAYS = [[1, 'Пн'], [2, 'Вт'], [3, 'Ср'], [4, 'Чт'], [5, 'Пт'], [6, 'Сб'], [0, 'Вс']];
 function readInitial() { try { return loadState(window.localStorage); } catch { return { data: null, error: 'Хранилище браузера недоступно. Личные записи пока нельзя сохранить.' }; } }
 function readTheme(fallback) { try { const value = localStorage.getItem('healthnote.theme'); return ['light', 'dark', 'system'].includes(value) ? value : fallback; } catch { return fallback; } }
 function Icon({ as: Component, ...props }) { return <Component size={21} strokeWidth={1.8} aria-hidden="true" {...props} />; }
@@ -13,37 +13,103 @@ function SelectField({ label, id, children, ...props }) { return <div className=
 function Choice({ value, options, onChange, label }) { return <div className="segmented" role="group" aria-label={label}>{options.map(([key, title]) => <button key={key} type="button" aria-pressed={value === key} className={value === key ? 'selected' : ''} onClick={() => onChange(key)}>{title}</button>)}</div>; }
 function Empty({ title, text, action }) { return <div className="empty"><span className="empty-icon"><Icon as={Activity} size={28} /></span><h3>{title}</h3><p>{text}</p>{action}</div>; }
 
-function Chart({ records, metric, period, zone }) {
-  const points = chartData(records, metric, period, zone);
+function RangeNavigator({ records, metric, period, zone, bounds, onChange }) {
+  const drag = useRef(null);
+  const points = useMemo(() => chartData(records, metric, period, zone), [records, metric, period, zone]);
+  const whole = useMemo(() => chartWindow(records, zone), [records, zone]);
+  const window = chartWindow(records, zone, bounds);
+  const date = coordinate => formatDate(coordinate, 'UTC', { year: 'numeric' });
+  const disabled = whole.start === whole.end;
+  const values = points.flatMap(p => metric === 'bp' ? [p.value, p.lower] : [p.value]);
+  const low = Math.min(...values), high = Math.max(...values);
+  const x = point => disabled ? 500 : (localTimeCoordinate(point.at, zone) - whole.start) / (whole.end - whole.start) * 1000;
+  const y = value => high === low ? 30 : 48 - (value - low) / (high - low) * 36;
+  const line = key => points.map((point, i) => `${i ? 'L' : 'M'} ${x(point)} ${y(point[key])}`).join(' ');
+  return <div className="range-navigator" role="group" aria-label="Окно диапазона истории">
+    <div className="range-heading"><span>Диапазон на графике</span><button type="button" className="text-button" disabled={bounds[0] === 0 && bounds[1] === 1000} onClick={() => onChange([0, 1000])}>Весь период</button></div>
+    <div className="range-track">
+      <svg viewBox="0 0 1000 60" preserveAspectRatio="none" aria-hidden="true"><path d={line('value')} className="chart-line" />{metric === 'bp' && <path d={line('lower')} className="chart-line lower" />}{points.length === 1 && <circle cx="500" cy={y(points[0].value)} r="3" className="chart-dot" />}</svg>
+      <div className="range-band" style={{ left: `calc(22px + (100% - 44px) * ${bounds[0] / 1000})`, right: `calc(22px + (100% - 44px) * ${1 - bounds[1] / 1000})` }}
+        onPointerDown={event => { if (disabled) return; event.currentTarget.setPointerCapture(event.pointerId); drag.current = { x: event.clientX, bounds, width: event.currentTarget.parentElement.clientWidth - 44 }; }}
+        onPointerMove={event => { if (!drag.current) return; const original = drag.current; const delta = Math.round((event.clientX - original.x) / original.width * 1000); const start = Math.max(0, Math.min(1000 - (original.bounds[1] - original.bounds[0]), original.bounds[0] + delta)); onChange([start, start + original.bounds[1] - original.bounds[0]]); }}
+        onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} />
+      <input type="range" className="range-boundary" min="0" max="1000" step="1" disabled={disabled} value={bounds[0]} aria-label="Левая граница диапазона" aria-valuetext={date(window.start)} onChange={event => onChange([Math.min(Number(event.target.value), bounds[1] - 1), bounds[1]])} />
+      <input type="range" className="range-boundary" min="0" max="1000" step="1" disabled={disabled} value={bounds[1]} aria-label="Правая граница диапазона" aria-valuetext={date(window.end)} onChange={event => onChange([bounds[0], Math.max(Number(event.target.value), bounds[0] + 1)])} />
+    </div>
+    <div className="range-dates"><span>{date(window.start)}</span><span>{date(window.end)}</span></div>
+    <p className="range-help">{disabled ? 'Пока доступно одно время измерения.' : 'Двигайте края окна или перетаскивайте его целиком.'}</p>
+  </div>;
+}
+
+function Chart({ records, overviewRecords, metric, period, zone, bounds, onRangeChange }) {
+  if (!overviewRecords.length) return <Empty title="Здесь появится ваша динамика" text="Добавьте измерение или выберите другой период." />;
+  const window = onRangeChange ? chartWindow(overviewRecords, zone, bounds) : null;
+  const navigator = onRangeChange && <RangeNavigator records={overviewRecords} metric={metric} period={period} zone={zone} bounds={bounds} onChange={onRangeChange} />;
+  return <ChartPlot records={records} metric={metric} period={period} zone={zone} window={window} navigator={navigator} />;
+}
+
+function ChartPlot({ records, metric, period, zone, window, navigator }) {
+  const points = useMemo(() => chartData(records, metric, period, zone), [records, metric, period, zone]);
   const [selection, setSelection] = useState(null);
-  useEffect(() => setSelection(null), [records, metric, period]);
-  if (!points.length) return <Empty title="Здесь появится ваша динамика" text="Добавьте измерение, чтобы начать историю." />;
+  if (!points.length) return <><div className="chart-empty" role="status">В этом диапазоне нет измерений. Раздвиньте границы окна.</div>{navigator}</>;
   const values = points.flatMap(p => p.lower == null ? [p.value] : [p.value, p.lower]);
   let low = Math.floor(Math.min(...values) - (metric === 'weight' ? .5 : 5));
   let high = Math.ceil(Math.max(...values) + (metric === 'weight' ? .5 : 5));
   if (high === low) high += 1;
   const W = 420, H = 185, left = 38, right = 12, top = 14, bottom = 28;
   const coordinates = points.map(point => localTimeCoordinate(point.at, zone));
-  const start = coordinates[0], end = coordinates.at(-1);
+  const start = window?.start ?? coordinates[0], end = window?.end ?? coordinates.at(-1);
   const x = i => start === end ? (W + left - right) / 2 : left + (coordinates[i] - start) / (end - start) * (W - left - right);
   const y = v => top + (high - v) / (high - low) * (H - top - bottom);
   const path = key => points.map((p, i) => `${i ? 'L' : 'M'} ${x(i)} ${y(p[key])}`).join(' ');
-  const selected = selection == null ? points.at(-1) : points[selection];
+  const found = points.findIndex(point => point.key === selection);
+  const selectedIndex = found < 0 ? points.length - 1 : found;
+  const selected = points[selectedIndex];
+  const record = selected.record;
+  const choose = index => setSelection(points[index].key);
   const indexes = [...new Set([0, Math.floor((points.length - 1) / 2), points.length - 1])];
   return <div className="chart-wrap">
-    <div className="chart-caption" aria-live="polite"><span>{formatDate(selected.at, zone)}{selected.aggregate ? ` · среднее за ${selected.aggregate}` : ` · ${formatTime(selected.at, zone)}`}</span><strong>{number(selected.value, metric === 'weight' ? 1 : 0)}{metric === 'bp' && ` / ${number(selected.lower)}`} <small>{METRICS[metric].unit}</small></strong></div>
+    <div className="chart-caption" aria-live="polite"><span>{formatDate(selected.at, zone, { year: 'numeric' })} · {formatTime(selected.at, zone)}</span><strong>{number(selected.value, metric === 'weight' ? 1 : 0)}{metric === 'bp' && ` / ${number(selected.lower)}`} <small>{METRICS[metric].unit}</small></strong></div>
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="group" tabIndex={0} aria-label={`График: ${METRICS[metric].label}, ${points.length} точек. Выбор стрелками влево и вправо или касанием графика.`}
-      onPointerDown={event => { const rect = event.currentTarget.getBoundingClientRect(); const px = (event.clientX - rect.left) / rect.width * W; let closest = 0; points.forEach((_, i) => { if (Math.abs(x(i) - px) < Math.abs(x(closest) - px)) closest = i; }); setSelection(closest); }}
-      onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = selection ?? points.length - 1; setSelection(event.key === 'Home' ? 0 : event.key === 'End' ? points.length - 1 : Math.max(0, Math.min(points.length - 1, current + (event.key === 'ArrowLeft' ? -1 : 1)))); }}>
+      onClick={event => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const px = (event.clientX - rect.left) / rect.width * W;
+        const py = (event.clientY - rect.top) / rect.height * H;
+        const distance = i => Math.hypot(x(i) - px, Math.min(Math.abs(y(points[i].value) - py), metric === 'bp' ? Math.abs(y(points[i].lower) - py) : Infinity));
+        let closest = 0; points.forEach((_, i) => { if (distance(i) < distance(closest)) closest = i; }); choose(closest);
+      }}
+      onKeyDown={event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault(); choose(event.key === 'Home' ? 0 : event.key === 'End' ? points.length - 1 : Math.max(0, Math.min(points.length - 1, selectedIndex + (event.key === 'ArrowLeft' ? -1 : 1))));
+      }}>
       {[0, 1, 2, 3].map(i => { const v = low + (high - low) * i / 3; return <g key={i}><line x1={left} x2={W - right} y1={y(v)} y2={y(v)} className="chart-grid" /><text x={left - 8} y={y(v) + 4} textAnchor="end" className="chart-label">{number(v, metric === 'weight' ? 1 : 0)}</text></g>; })}
       {points.length > 1 && <path d={`${path('value')} L ${x(points.length - 1)} ${H - bottom} L ${x(0)} ${H - bottom} Z`} className="chart-area" />}
       <path d={path('value')} className="chart-line" />
       {metric === 'bp' && <path d={path('lower')} className="chart-line lower" />}
-      {points.map((p, i) => <g key={`${p.at}-${i}`}><circle cx={x(i)} cy={y(p.value)} r={selection === i ? 5 : 3} className="chart-dot" />{metric === 'bp' && <circle cx={x(i)} cy={y(p.lower)} r={2.5} className="chart-dot lower" />}</g>)}
+      {points.map((p, i) => <g key={p.key}><circle cx={x(i)} cy={y(p.value)} r={3} className="chart-dot" />{metric === 'bp' && <circle cx={x(i)} cy={y(p.lower)} r={2.5} className="chart-dot lower" />}</g>)}
+      <g className="chart-selection" aria-hidden="true">
+        <line x1={x(selectedIndex)} x2={x(selectedIndex)} y1={top} y2={H - bottom} className="chart-cursor" />
+        <circle cx={x(selectedIndex)} cy={y(selected.value)} r={7} className="chart-selected-dot" />
+        {metric === 'bp' && <circle cx={x(selectedIndex)} cy={y(selected.lower)} r={7} className="chart-selected-dot lower" />}
+      </g>
       {indexes.map(i => <text key={i} x={x(i)} y={H - 5} textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'} className="chart-label">{formatDate(points[i].at, zone, { day: 'numeric', month: 'numeric' })}</text>)}
     </svg>
     {metric === 'bp' && <div className="legend"><span><i />Верхнее</span><span><i className="lower" />Нижнее</span></div>}
-    {points.some(p => p.aggregate) && <p className="small-note">На графике — средние по {points[0].aggregate === 'неделя' ? 'неделям' : 'дням'}.</p>}
+    {navigator}
+    <p className="chart-hint">Нажмите на точку, чтобы прочитать комментарий.</p>
+    <div className="chart-navigation" role="group" aria-label="Выбор точки">
+      <button type="button" onClick={() => choose(selectedIndex - 1)} disabled={selectedIndex === 0}>Раньше</button>
+      <span>Замер {selectedIndex + 1} из {points.length}</span>
+      <button type="button" onClick={() => choose(selectedIndex + 1)} disabled={selectedIndex === points.length - 1}>Позже</button>
+    </div>
+    <div className="chart-detail" aria-live="polite" aria-atomic="true">
+      <>
+        <h3>Выбранное измерение</h3>
+        <p className="chart-detail-time">{formatDate(record.at, zone, { year: 'numeric' })} · {formatTime(record.at, zone)}</p>
+        <p className="chart-detail-value">{record.kind === 'bp' ? `${record.systolic} / ${record.diastolic} мм рт. ст.${record.pulse != null ? ` · пульс ${record.pulse} уд/мин` : ''}` : `${number(record.weight, 1)} кг`}</p>
+        <p className={`chart-comment${record.comment ? '' : ' muted'}`}>{record.comment || 'К этому измерению комментарий не добавлен.'}</p>
+      </>
+    </div>
   </div>;
 }
 
@@ -62,12 +128,12 @@ function RecordForm({ kind, existing, seriesId, onSave, onDelete, onCancel }) {
   const [fields, setFields] = useState(() => ({ systolic: existing?.systolic ?? '', diastolic: existing?.diastolic ?? '', pulse: existing?.pulse ?? '', weight: existing?.weight ?? '', at: formTime(existing?.at || initialAt, zone), comment: existing?.comment ?? '' }));
   const [error, setError] = useState(''); const [confirmDelete, setConfirmDelete] = useState(false); const errorRef = useRef(null);
   const update = key => e => { setFields(f => ({ ...f, [key]: e.target.value })); setError(''); };
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault(); let timing;
     try { timing = recordTiming({ localValue: fields.at, timeZone: zone, initialAt, existing }); } catch (err) { setError(err.message); requestAnimationFrame(() => errorRef.current?.focus()); return; }
     const parse = value => Number(String(value).replace(',', '.'));
     const record = { id: existing?.id || uid(), kind, ...timing, comment: fields.comment.trim(), ...(kind === 'bp' ? { systolic: parse(fields.systolic), diastolic: parse(fields.diastolic), pulse: fields.pulse === '' ? null : parse(fields.pulse), seriesId: existing?.seriesId || seriesId || null } : { weight: parse(fields.weight) }) };
-    const result = onSave(record);
+    const result = await onSave(record);
     if (result) { setError(result); requestAnimationFrame(() => errorRef.current?.focus()); }
   }
   return <section className="page form-page"><div className="form-title"><span className={`large-icon ${kind}`}><Icon as={METRICS[kind].icon} size={27} /></span><h1>{existing ? 'Изменить запись' : kind === 'bp' ? (seriesId ? 'Повторное измерение' : 'Записать давление') : 'Записать вес'}</h1><p>{kind === 'bp' ? 'Показания вашего тонометра' : 'Небольшой шаг к полной картине'}</p></div>
@@ -78,64 +144,70 @@ function RecordForm({ kind, existing, seriesId, onSave, onDelete, onCancel }) {
       <div className="field"><label htmlFor="comment">Комментарий <span className="muted">· необязательно</span></label><textarea id="comment" rows={3} placeholder="Например, после прогулки" maxLength={300} value={fields.comment} onChange={update('comment')} /><small>{fields.comment.length}/300</small></div>
       {error && <div role="alert" tabIndex={-1} ref={errorRef} className="form-error">{error}</div>}
       <Button className="primary-button" type="submit" size="l" stretched before={<Icon as={Check} />}>Сохранить измерение</Button>
-      {existing && <div className="delete-zone">{confirmDelete ? <><p>Удалить эту запись? Вернуть её будет нельзя.</p><div className="button-pair"><button type="button" className="text-button" onClick={() => setConfirmDelete(false)}>Оставить</button><button type="button" className="danger-button" onClick={() => { const result = onDelete(existing.id); if (result) setError(result); }}>Да, удалить</button></div></> : <button type="button" className="text-button danger" onClick={() => setConfirmDelete(true)}><Icon as={Trash2} size={17} />Удалить запись</button>}</div>}
+      {existing && <div className="delete-zone">{confirmDelete ? <><p>Удалить эту запись? Вернуть её будет нельзя.</p><div className="button-pair"><button type="button" className="text-button" onClick={() => setConfirmDelete(false)}>Оставить</button><button type="button" className="danger-button" onClick={async () => { const result = await onDelete(existing.id); if (result) setError(result); }}>Да, удалить</button></div></> : <button type="button" className="text-button danger" onClick={() => setConfirmDelete(true)}><Icon as={Trash2} size={17} />Удалить запись</button>}</div>}
       <button type="button" className="text-button full" onClick={onCancel}>Отмена</button>
     </form>
   </section>;
 }
 
-function ScheduleFields({ kind, value, onChange }) {
-  const patch = v => onChange({ ...value, ...v });
-  return <div className="schedule-fields"><div className="section-heading"><h3><Icon as={METRICS[kind].icon} />{METRICS[kind].label}</h3><label className="switch"><input aria-label={`Расписание: ${METRICS[kind].label}`} type="checkbox" checked={value.enabled} onChange={e => patch({ enabled: e.target.checked })} /><span /></label></div>
-    {value.enabled && <><SelectField id={`frequency-${kind}`} label="Повторять" value={value.frequency} onChange={e => patch({ frequency: e.target.value })}><option value="daily">Каждый день</option><option value="weekly">По дням недели</option><option value="monthly">Раз в месяц</option></SelectField>
-      {value.frequency === 'weekly' && <div className="days" role="group" aria-label={`Дни: ${METRICS[kind].label}`}>{DAYS.map(([n, label]) => <button type="button" key={n} className={value.days.includes(n) ? 'selected' : ''} aria-pressed={value.days.includes(n)} onClick={() => patch({ days: value.days.includes(n) ? value.days.filter(d => d !== n) : [...value.days, n] })}>{label}</button>)}</div>}
-      {value.frequency === 'monthly' && <SelectField id={`monthday-${kind}`} label="День месяца" value={value.monthDay} onChange={e => patch({ monthDay: Number(e.target.value) })}>{Array.from({ length: 28 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</SelectField>}
-      <div className="time-fields">{value.times.map((time, i) => <Field key={i} id={`${kind}-time-${i}`} label={i === 0 ? 'Время' : 'Второе измерение'} type="time" required value={time} onChange={e => patch({ times: value.times.map((t, j) => j === i ? e.target.value : t) })} />)}</div>
-      {kind === 'bp' && <button className="text-button" type="button" onClick={() => patch({ times: value.times.length > 1 ? [value.times[0]] : [value.times[0], '20:00'] })}>{value.times.length > 1 ? 'Оставить одно измерение в день' : '+ Второе измерение в день'}</button>}
-    </>}
-  </div>;
-}
-
-function ProfileForm({ state, onboarding, onSave, onCancel, onExport, onTheme, theme }) {
+function ProfileForm({ state, onboarding, onSave, onSchedulesChange, onImport, cloud, focusReminders, onCancel, onExport, onTheme, theme }) {
   const [profile, setProfile] = useState({ ...state.profile });
   const [weight, setWeight] = useState('');
+  const [canMessage, setCanMessage] = useState(cloud?.canMessage);
+  const [notice, setNotice] = useState('');
   const [schedules, setSchedules] = useState(structuredClone(state.schedules));
+  const remindersRef = useRef(null);
+  useEffect(() => { if (focusReminders) requestAnimationFrame(() => { remindersRef.current?.scrollIntoView({ block: 'start' }); remindersRef.current?.focus({ preventScroll: true }); }); }, [focusReminders]);
+  async function changeSchedules(next) {
+    const failure = onboarding ? '' : await onSchedulesChange(next);
+    if (!failure) setSchedules(next);
+    return failure;
+  }
   const [error, setError] = useState(''); const errorRef = useRef(null);
   const update = key => e => setProfile(p => ({ ...p, [key]: e.target.value }));
   const zoneOptions = [...new Set([state.profile.timezone, 'Europe/Moscow', 'Europe/Kaliningrad', 'Europe/Samara', 'Asia/Yekaterinburg', 'Asia/Novosibirsk', 'Asia/Irkutsk', 'Asia/Vladivostok', 'Europe/Berlin', 'Asia/Tbilisi', 'Asia/Dubai', 'UTC'])];
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault(); let message = validateProfile(profile, schedules);
     const height = profile.height === '' ? '' : Number(String(profile.height).replace(',', '.'));
     const parsedWeight = weight === '' ? null : Number(weight.replace(',', '.'));
     if (parsedWeight != null && (!Number.isFinite(parsedWeight) || parsedWeight < 10 || parsedWeight > 500)) message = 'Вес: число от 10 до 500 кг.';
-    if (!message) message = onSave({ ...profile, height, theme }, schedules, parsedWeight) || '';
+    if (!message) message = await onSave({ ...profile, height, theme }, schedules, parsedWeight) || '';
     if (message) { setError(message); requestAnimationFrame(() => errorRef.current?.focus()); }
   }
   return <section className="page profile-page"><div className="page-title"><h1>{onboarding ? 'Ваш дневник' : 'Профиль'}</h1><p>{onboarding ? 'Настроим его под ваш ритм.' : 'Всё самое важное — под рукой.'}</p></div>
-    {onboarding && <div className="privacy-note"><Icon as={ShieldCheck} /><p>Записи хранятся только в этом браузере. Синхронизации пока нет. Экспортируйте копию, чтобы не потерять историю при очистке браузера.</p></div>}
+    {onboarding && <div className="privacy-note"><Icon as={ShieldCheck} /><p>{cloud ? 'Записи сохраняются на сервере и доступны только вашему Telegram-аккаунту. Можно скачать резервную копию в JSON.' : 'Записи хранятся только в этом браузере. Синхронизации пока нет. Экспортируйте копию, чтобы не потерять историю при очистке браузера.'}</p></div>}
     <section className="theme-panel"><h2>Оформление</h2><div className="theme-options">{[['system', 'Система', Monitor], ['dark', 'Тёмная', Moon], ['light', 'Светлая', Sun]].map(([value, label, icon]) => <button type="button" key={value} aria-pressed={theme === value} className={theme === value ? 'selected' : ''} onClick={() => onTheme(value)}><Icon as={icon} /><span>{label}</span></button>)}</div></section>
-    <form onSubmit={submit}><section className="profile-section"><h2>О вас</h2><p className="small-note">Можно заполнить сейчас или позже.</p><Field id="birth-date" label="Дата рождения" type="date" value={profile.birthDate} max={dayKey(Date.now(), validZone(profile.timezone) ? profile.timezone : state.profile.timezone)} min="1900-01-01" onChange={update('birthDate')} />
+    <form onSubmit={submit}>
+      <section className="profile-section alarms-section"><h2 ref={remindersRef} tabIndex={-1}>Напоминания об измерениях</h2><p className="small-note">{onboarding ? 'Можно добавить сейчас или позже.' : 'Изменения напоминаний сохраняются сразу.'} {cloud ? 'Напоминания приходят сообщениями от бота, даже когда дневник закрыт.' : 'Пока они появляются только на открытом сайте; фоновые уведомления ещё не подключены.'}</p>{cloud && !canMessage && <button type="button" className="text-button" onClick={async () => { const allowed = await cloud.requestMessages(); setCanMessage(allowed); setNotice(allowed ? 'Сообщения от бота разрешены.' : 'Откройте @bpjournalbot и нажмите «Начать», чтобы получать напоминания.'); }}>Разрешить сообщения от бота</button>}{notice && <p className="small-note" role="status">{notice}</p>}<AlarmSettings schedules={schedules} onChange={changeSchedules} /></section>
+      <section className="profile-section"><h2>О вас</h2><p className="small-note">Можно заполнить сейчас или позже.</p><Field id="birth-date" label="Дата рождения" type="date" value={profile.birthDate} max={dayKey(Date.now(), validZone(profile.timezone) ? profile.timezone : state.profile.timezone)} min="1900-01-01" onChange={update('birthDate')} />
       <div className="two-fields"><SelectField id="sex" label="Пол" value={profile.sex} onChange={update('sex')}><option value="">Не указан</option><option value="female">Женский</option><option value="male">Мужской</option><option value="unspecified">Не указывать</option></SelectField><Field id="height" label="Рост, см" inputMode="decimal" placeholder="178" value={profile.height} onChange={update('height')} /></div>
       {onboarding && <Field id="initial-weight" label="Текущий вес, кг" hint="Станет первой записью в дневнике" inputMode="decimal" placeholder="76,4" value={weight} onChange={e => setWeight(e.target.value)} />}
       <div className="field"><label htmlFor="timezone">Часовой пояс расписания</label><input className="native-input" id="timezone" list="timezones" value={profile.timezone} onChange={update('timezone')} required spellCheck={false} /><datalist id="timezones">{zoneOptions.map(z => <option key={z} value={z} />)}</datalist><small>Расписание следует этому поясу. Записи и история используют местное время устройства.</small></div>
-    </section><section className="profile-section"><h2>Ритм измерений</h2><p className="small-note">Сайт покажет расписание, пока открыт. Сообщения в Telegram подключим на следующем этапе.</p>{['bp', 'weight'].map(kind => <ScheduleFields kind={kind} value={schedules[kind]} key={kind} onChange={s => setSchedules(v => ({ ...v, [kind]: s }))} />)}</section>
+    </section>
       {error && <div className="form-error" role="alert" tabIndex={-1} ref={errorRef}>{error}</div>}
       <Button size="l" stretched className="primary-button" type="submit" before={<Icon as={Check} />}>{onboarding ? 'Начать вести дневник' : 'Сохранить настройки'}</Button>
-      {onboarding && <button className="text-button full" type="button" onClick={onCancel}>Вернуться к примеру</button>}
+      {onboarding && <button className="text-button full" type="button" onClick={onCancel}>{cloud ? 'Заполнить позже' : 'Вернуться к примеру'}</button>}
     </form>
-    {!onboarding && <section className="profile-section"><h2>Ваши данные</h2><button className="settings-row" onClick={onExport}><Icon as={ArrowDownToLine} /><span>Скачать копию дневника<small>Все записи и настройки в JSON</small></span><Icon as={ChevronRight} size={17} /></button><p className="small-note">Хранится на этом устройстве, в этом браузере. Очистка данных сайта удалит историю.</p></section>}
+    {!onboarding && <section className="profile-section"><h2>Ваши данные</h2><button className="settings-row" onClick={onExport}><Icon as={ArrowDownToLine} /><span>Скачать копию дневника<small>Все записи и настройки в JSON</small></span><Icon as={ChevronRight} size={17} /></button>{cloud && <div className="field"><label htmlFor="import-diary">Перенести записи из JSON-копии</label><input id="import-diary" className="native-input" type="file" accept="application/json,.json" onChange={async e => {
+      const input = e.currentTarget; const file = input.files?.[0]; if (!file) return;
+      try { if (file.size > 4 * 1024 * 1024) throw new Error('Файл больше 4 МБ.'); const message = await onImport(validateState(JSON.parse(await file.text()))); if (message) throw new Error(message); setNotice('Записи из копии добавлены.'); } catch (error) { setError(error.message); requestAnimationFrame(() => errorRef.current?.focus()); } finally { input.value = ''; }
+    }} /><small>Добавятся измерения с новыми идентификаторами. Настройки и существующие записи останутся.</small></div>}<p className="small-note">{cloud ? 'Дневник хранится на сервере и привязан к вашему Telegram-аккаунту.' : 'Хранится на этом устройстве, в этом браузере. Очистка данных сайта удалит историю.'}</p></section>}
   </section>;
 }
 
-export default function App() {
-  const [initial] = useState(readInitial);
+export default function App({ cloud = null, previewOnly = false }) {
+  const [initial] = useState(() => cloud ? { data: cloud.state, error: '' } : previewOnly ? { data: null, error: '' } : readInitial());
   const [data, setData] = useState(() => initial.data || makeDemo());
   const [demo, setDemo] = useState(!initial.data);
-  const [view, setView] = useState('today');
+  const [view, setView] = useState(cloud?.isNew ? 'onboarding' : 'today');
+  const [focusReminders, setFocusReminders] = useState(false);
+  function openReminders() { setFocusReminders(true); setView('profile'); }
   const [theme, setTheme] = useState(() => readTheme(initial.data?.profile.theme || 'dark'));
   const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [metric, setMetric] = useState('bp'); const [period, setPeriod] = useState('7');
-  const [form, setForm] = useState(null); const [toast, setToast] = useState(''); const [error, setError] = useState(initial.error);
+  const [rangeSelection, setRangeSelection] = useState(null);
+  const [form, setForm] = useState(() => { const q = new URLSearchParams(location.search); return cloud && !cloud.isNew && ['bp','weight'].includes(q.get('record')) ? { kind: q.get('record'), reminderKey: q.get('reminder') || undefined } : null; }); const [toast, setToast] = useState(''); const [error, setError] = useState(initial.error);
+  const saving = useRef(false);
   const [savedRecord, setSavedRecord] = useState(null); const [clock, setClock] = useState(Date.now());
   const appearance = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme;
   const zone = deviceZone();
@@ -144,8 +216,15 @@ export default function App() {
   useEffect(() => { const id = setInterval(() => setClock(Date.now()), 30000); return () => clearInterval(id); }, []);
   useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(''), 4500); return () => clearTimeout(id); }, [toast]);
   useEffect(() => { window.scrollTo({ top: 0 }); }, [view, form]);
-  useEffect(() => { const onStorage = e => { if (e.key !== STORAGE_KEY || demo) return; const result = readInitial(); if (result.data) { setData(result.data); setToast('Дневник обновлён в другой вкладке'); } else setError(result.error || 'Данные удалены в другой вкладке. Перезагрузите страницу.'); }; window.addEventListener('storage', onStorage); return () => window.removeEventListener('storage', onStorage); }, [demo]);
-  function commit(next, forceReal = false) {
+  useEffect(() => { if (cloud) return; const onStorage = e => { if (e.key !== STORAGE_KEY || demo) return; const result = readInitial(); if (result.data) { setData(result.data); setToast('Дневник обновлён в другой вкладке'); } else setError(result.error || 'Данные удалены в другой вкладке. Перезагрузите страницу.'); }; window.addEventListener('storage', onStorage); return () => window.removeEventListener('storage', onStorage); }, [demo]);
+  async function commit(next, forceReal = false) {
+    if (cloud) {
+      if (saving.current) return 'Дождитесь завершения сохранения.';
+      saving.current = true;
+      try { await cloud.save(next); setData(next); setError(''); return ''; }
+      catch (e) { setError(e.message); return e.message; }
+      finally { saving.current = false; }
+    }
     if (!demo || forceReal) {
       if (initial.error) return initial.error;
       let result; try { result = saveState(localStorage, next); } catch { result = 'Хранилище браузера недоступно. Изменения не сохранены.'; }
@@ -155,17 +234,17 @@ export default function App() {
   }
   function changeTheme(value) { setTheme(value); try { localStorage.setItem('healthnote.theme', value); } catch { setError('Тема применена, но браузер не разрешил сохранить выбор.'); } }
   function openRecord(kind, existing = null, extra = {}) { setSavedRecord(null); setForm({ kind, existing, ...extra }); }
-  function saveRecord(record) {
+  async function saveRecord(record) {
     const validation = validateRecord(record);
     if (validation) return validation;
     const next = { ...data, records: [...data.records.filter(r => r.id !== record.id), record] };
     if (form.seriesSource) next.records = next.records.map(r => r.id === form.seriesSource ? { ...r, seriesId: record.seriesId, updatedAt: record.updatedAt } : r);
     if (form.reminderKey) next.reminderActions = { ...data.reminderActions, [form.reminderKey]: 'done' };
-    const failure = commit(next); if (failure) return failure;
+    const failure = await commit(next); if (failure) return failure;
     setSavedRecord(record); setForm(null); setToast(demo ? 'Пример записи добавлен' : 'Измерение сохранено'); setClock(Date.now()); return '';
   }
-  function deleteRecord(id) { const failure = commit({ ...data, records: data.records.filter(r => r.id !== id) }); if (failure) return failure; setForm(null); setToast('Запись удалена'); return ''; }
-  function saveProfile(profile, schedules, weight) {
+  async function deleteRecord(id) { const failure = await commit({ ...data, records: data.records.filter(r => r.id !== id) }); if (failure) return failure; setForm(null); setToast('Запись удалена'); return ''; }
+  async function saveProfile(profile, schedules, weight) {
     const onboarding = view === 'onboarding';
     const next = onboarding ? emptyState(theme) : { ...data };
     next.profile = profile; next.schedules = schedules;
@@ -173,11 +252,22 @@ export default function App() {
       const timing = timeMetadata(Date.now());
       next.records = [...next.records, { id: uid(), kind: 'weight', weight, ...timing, createdAt: timing.at, updatedAt: timing.at, comment: '' }];
     }
-    const failure = commit(next, onboarding); if (failure) return failure;
+    const failure = await commit(next, onboarding); if (failure) return failure;
     if (onboarding) { setDemo(false); setView('today'); setSavedRecord(null); }
     setToast(onboarding ? 'Ваш дневник готов к первой записи' : 'Настройки сохранены'); return '';
   }
-  function reminderAction(key, action) { if (!commit({ ...data, reminderActions: { ...data.reminderActions, [key]: action } })) setToast(action === 'skip' ? 'Измерение пропущено' : 'Отложено на 30 минут'); }
+  function saveSchedules(schedules) { return commit({ ...data, schedules }); }
+  async function reminderAction(tasks, action) { if (!await commit({ ...data, reminderActions: { ...data.reminderActions, ...Object.fromEntries(tasks.map(task => [task.key, action])) } })) setToast(action === 'skip' ? 'Измерение пропущено' : 'Отложено на 30 минут'); }
+  async function importData(imported) {
+    const known = new Set(data.records.map(r => r.id));
+    return commit({ ...data, records: [...data.records, ...imported.records.filter(r => !known.has(r.id))] });
+  }
+  useEffect(() => {
+    const tg = cloud?.telegram; if (!tg) return;
+    const back = () => { if (form) setForm(null); else setView('today'); };
+    if (form || ['history','profile'].includes(view)) tg.BackButton.show(); else tg.BackButton.hide();
+    tg.BackButton.onClick(back); return () => tg.BackButton.offClick(back);
+  }, [cloud, form, view]);
   function exportData() {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `healthnote-${dayKey(Date.now(), zone)}${demo ? '-demo' : ''}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 500); setToast('Копия дневника подготовлена');
   }
@@ -186,7 +276,10 @@ export default function App() {
   const byInstant = [...data.records].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   const weight = byInstant.find(r => r.kind === 'weight');
   const week = sevenDaySummary(data.records, zone, clock);
-  const chartRecords = selectRecords(data.records, metric, period, zone, clock);
+  const rangeContext = `${metric}-${period}-${zone}`;
+  const bounds = view === 'history' && rangeSelection?.context === rangeContext ? rangeSelection.bounds : [0, 1000];
+  const overviewRecords = useMemo(() => selectRecords(data.records, metric, period, zone, clock), [data.records, metric, period, zone, clock]);
+  const chartRecords = view === 'history' ? chartWindow(overviewRecords, zone, bounds).records : overviewRecords;
   const summary = stats(chartRecords, metric);
   const due = reminders(data, clock);
   const todayCount = data.records.filter(r => dayKey(r.at, zone) === dayKey(clock, zone)).length;
@@ -194,10 +287,10 @@ export default function App() {
   const activeView = form ? 'form' : view;
   return <AppRoot appearance={appearance} platform="ios" className={`healthnote ${appearance}`}>
     <div className="app-shell"><header className="app-header"><button className="brand" aria-label="Healthnote — на главную" onClick={() => { setForm(null); setView('today'); }}><span className="brand-mark"><Icon as={Activity} size={23} /></span><span>healthnote<span className="brand-dot">.</span></span></button>{activeView === 'form' || view === 'onboarding' ? <button className="icon-button" aria-label="Закрыть" onClick={() => { setForm(null); setView('today'); }}><Icon as={X} /></button> : <button className="icon-button" aria-label="Изменить тему" title="Изменить тему" onClick={() => changeTheme(appearance === 'dark' ? 'light' : 'dark')}><Icon as={appearance === 'dark' ? Sun : Moon} /></button>}</header>
-      {demo && <div className="demo-banner"><span><span className="status-dot" />Демо · вымышленные данные</span><button onClick={() => { setForm(null); setView('onboarding'); }}>Начать свой<Icon as={ArrowRight} size={14} /></button></div>}
+      {demo && <div className="demo-banner"><span><span className="status-dot" />Демо · вымышленные данные</span>{!previewOnly && <button onClick={() => { setForm(null); setView('onboarding'); }}>Начать свой<Icon as={ArrowRight} size={14} /></button>}</div>}
       {error && <div role="alert" className="persistent-error"><Icon as={Info} /><span>{error}</span></div>}
       <main id="main-content">
-        {form ? <RecordForm key={form.existing?.id || `${form.kind}-${form.seriesId || 'new'}`} kind={form.kind} existing={form.existing} seriesId={form.seriesId} onSave={saveRecord} onDelete={deleteRecord} onCancel={() => setForm(null)} /> : view === 'profile' || view === 'onboarding' ? <ProfileForm key={`${view}-${demo}`} state={view === 'onboarding' ? emptyState(theme) : data} onboarding={view === 'onboarding'} onSave={saveProfile} onCancel={() => setView('today')} onExport={exportData} onTheme={changeTheme} theme={theme} /> : <div className="page">
+        {form ? <RecordForm key={form.existing?.id || `${form.kind}-${form.seriesId || 'new'}`} kind={form.kind} existing={form.existing} seriesId={form.seriesId} onSave={saveRecord} onDelete={deleteRecord} onCancel={() => setForm(null)} /> : view === 'profile' || view === 'onboarding' ? <ProfileForm key={`${view}-${demo}`} state={view === 'onboarding' ? emptyState(theme) : data} onboarding={view === 'onboarding'} onSave={saveProfile} onSchedulesChange={saveSchedules} onImport={importData} cloud={cloud} focusReminders={focusReminders && view === 'profile'} onCancel={() => setView('today')} onExport={exportData} onTheme={changeTheme} theme={theme} /> : <div className="page">
           <div className="page-title"><div><h1>{view === 'today' ? 'Сегодня' : 'История'}</h1><p>{view === 'today' ? formatDate(clock, zone, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Каждое измерение — часть картины.'}</p></div>{view === 'today' && <span className="day-count"><Check size={14} aria-hidden="true" />{todayCount ? `${todayCount} ${todayCount === 1 ? 'запись' : todayCount < 5 ? 'записи' : 'записей'}` : 'Новый день'}</span>}</div>
           {savedRecord?.kind === 'bp' && <div className="series-notice"><div><Icon as={Check} /><span>{series?.count > 1 ? `Среднее серии: ${number(series.avg)} / ${number(series.lower)} · ${series.count} замера` : 'Измерение записано'}</span><button className="icon-button" aria-label="Закрыть предложение повтора" onClick={() => setSavedRecord(null)}><Icon as={X} size={16} /></button></div><button className="text-button" onClick={() => openRecord('bp', null, { seriesId: savedRecord.seriesId || uid(), seriesSource: savedRecord.id })}><Icon as={Repeat2} size={16} />Добавить повторный замер</button></div>}
           {view === 'today' && <><section className="measurements" aria-label="Средние значения за последние 7 дней">
@@ -211,19 +304,26 @@ export default function App() {
               <div><span className="summary-label"><Icon as={Scale} size={17} />Средний вес</span><strong>{number(week.weight.avg, 1)} <small>кг</small></strong><span className="time-label">{summaryCoverage(week.weight)}</span></div>
             </div>
           </section>
-            <div className="quick-actions"><Button size="l" className="primary-button" before={<Icon as={Plus} size={19} />} onClick={() => openRecord('bp')}>Давление</Button><Button size="l" className="secondary-button" before={<Icon as={Plus} size={19} />} onClick={() => openRecord('weight')}>Вес</Button></div></>}
-          <section className="trends-section"><div className="section-heading"><h2>{view === 'today' ? 'Ваша динамика' : 'Обзор измерений'}</h2>{view === 'today' && <button className="text-button" onClick={() => setView('history')}>Все записи<Icon as={ChevronRight} size={15} /></button>}</div><Choice value={metric} options={Object.entries(METRICS).map(([k, v]) => [k, v.label])} onChange={setMetric} label="Показатель" /><div className="periods" role="group" aria-label="Период">{PERIODS.map(([key, label]) => <button key={key} aria-pressed={period === key} className={period === key ? 'selected' : ''} onClick={() => setPeriod(key)}>{label}</button>)}</div><Chart records={chartRecords} metric={metric} period={period} zone={zone} />
+            <div className="quick-actions"><Button size="l" className="primary-button" before={<Icon as={Plus} size={19} />} onClick={() => openRecord('bp')}>Давление</Button><Button size="l" className="secondary-button" before={<Icon as={Plus} size={19} />} onClick={() => openRecord('weight')}>Вес</Button></div>
+            {!data.schedules.some(s => s.enabled) && <button className="reminder-setup-link" onClick={openReminders}><Icon as={Bell} size={17} /><span>{data.schedules.length ? 'Напоминания выключены — настроить' : 'Настроить напоминания об измерениях'}</span><Icon as={ChevronRight} size={16} /></button>}
+          </>}
+          <section className="trends-section"><div className="section-heading"><h2>{view === 'today' ? 'Ваша динамика' : 'Обзор измерений'}</h2>{view === 'today' && <button className="text-button" onClick={() => setView('history')}>Все записи<Icon as={ChevronRight} size={15} /></button>}</div><Choice value={metric} options={Object.entries(METRICS).map(([k, v]) => [k, v.label])} onChange={value => { setMetric(value); setRangeSelection(null); }} label="Показатель" /><div className="periods" role="group" aria-label="Период">{PERIODS.map(([key, label]) => <button key={key} aria-pressed={period === key} className={period === key ? 'selected' : ''} onClick={() => { setPeriod(key); setRangeSelection(null); }}>{label}</button>)}</div><Chart key={`${view}-${rangeContext}`} records={chartRecords} overviewRecords={overviewRecords} metric={metric} period={period} zone={zone} bounds={bounds} onRangeChange={view === 'history' ? bounds => setRangeSelection({ context: rangeContext, bounds }) : null} />
             <div className="statistics"><div><span>Среднее</span><strong>{number(summary.avg, metric === 'weight' ? 1 : 0)}{metric === 'bp' && <small> / {number(summary.lower)}</small>}</strong></div><div><span>Минимум{metric === 'bp' ? ' верх.' : ''}</span><strong>{number(summary.min, metric === 'weight' ? 1 : 0)}</strong></div><div><span>Максимум{metric === 'bp' ? ' верх.' : ''}</span><strong>{number(summary.max, metric === 'weight' ? 1 : 0)}</strong></div></div>
             {metric === 'weight' && weight && data.profile.height && <p className="bmi-note">Индекс массы тела: <strong>{number(bmi(weight.weight, data.profile.height), 1)}</strong> · по последнему весу и росту {data.profile.height} см</p>}
           </section>
           {view === 'history' ? <section><div className="section-heading"><h2>Записи <span className="count">{chartRecords.length}</span></h2><button className="text-button" onClick={() => openRecord(metric === 'weight' ? 'weight' : 'bp')}><Icon as={Plus} size={16} />Добавить</button></div>{chartRecords.length ? <RecordRows records={chartRecords} zone={zone} onEdit={r => openRecord(r.kind, r)} /> : <Empty title="За этот период записей нет" text="Выберите другой период или добавьте измерение." />}</section> : <>
-            <section className="reminders-section"><div className="section-heading"><h2>Ваш ритм</h2><button className="icon-button" aria-label="Настроить расписание" onClick={() => setView('profile')}><Icon as={SlidersHorizontal} size={18} /></button></div>{due.length ? due.slice(0, 2).map(r => <div className="reminder" key={r.key}><div className="reminder-head"><span className="reminder-icon"><Icon as={r.kind === 'bp' ? Activity : Scale} size={19} /></span><div><strong>{METRICS[r.kind].label}</strong><span>{dayKey(r.at, zone) === dayKey(clock, zone) ? 'Сегодня' : formatDate(r.at, zone)} в {formatTime(r.at, zone)}</span></div><button className="reminder-record" onClick={() => openRecord(r.kind, null, { reminderKey: r.key })}>{r.overdue ? 'Записать' : 'Добавить'}<Icon as={Plus} size={15} /></button></div>{r.overdue && <div className="reminder-options"><button onClick={() => reminderAction(r.key, Date.now() + 30 * 60000)}><Icon as={Clock3} size={13} />Через 30 мин</button><button onClick={() => reminderAction(r.key, 'skip')}>Пропустить</button></div>}</div>) : <p className="small-note">Расписание выключено. Его можно включить в профиле.</p>}<p className="small-note reminder-foot"><Icon as={Bell} size={13} />Напоминания здесь, пока сайт открыт.</p></section>
+            {data.schedules.some(s => s.enabled) && <section className="reminders-section"><div className="section-heading"><h2>Напоминания</h2><button className="icon-button" aria-label="Настроить напоминания" onClick={openReminders}><Icon as={SlidersHorizontal} size={18} /></button></div>
+              {due.slice(0, 2).map(r => <div className="reminder" key={r.key}><div className="reminder-head"><span className="reminder-icon"><Icon as={Bell} size={19} /></span><div><strong>{r.tasks.length > 1 ? 'Давление и вес' : METRICS[r.tasks[0].kind].label}</strong><span>{dayKey(r.at, zone) === dayKey(clock, zone) ? 'Сегодня' : formatDate(r.at, zone)} в {formatTime(r.at, zone)}</span></div></div>
+                <div className="reminder-measurements">{r.tasks.map(task => <button key={task.key} className="reminder-record" onClick={() => openRecord(task.kind, null, { reminderKey: task.key })}><Icon as={Plus} size={15} />{METRICS[task.kind].label}</button>)}</div>
+                {r.overdue && <div className="reminder-options"><button onClick={() => reminderAction(r.tasks, Date.now() + 30 * 60000)}><Icon as={Clock3} size={13} />Через 30 мин</button><button onClick={() => reminderAction(r.tasks, 'skip')}>Пропустить</button></div>}
+              </div>)}<p className="small-note reminder-foot"><Icon as={Bell} size={13} />{cloud ? 'Напоминания приходят от @bpjournalbot.' : 'Напоминания здесь, пока сайт открыт.'}</p></section>}
+
             <section><div className="section-heading"><h2>Последние записи</h2><button className="text-button" onClick={() => setView('history')}><Icon as={ArrowRight} size={19} /><span className="sr-only">Открыть всю историю</span></button></div>{latest.length ? <RecordRows records={latest} zone={zone} limit={3} onEdit={r => openRecord(r.kind, r)} /> : <Empty title="Начните с одного измерения" text="Давление или вес — выбирайте, что записать сегодня." />}</section>
           </>}
-          <footer className="page-footer"><Icon as={ShieldCheck} size={14} /><span>{demo ? 'Пример дневника · можно пробовать все функции' : 'Ваши записи остаются в этом браузере'}</span></footer>
+          <footer className="page-footer"><Icon as={ShieldCheck} size={14} /><span>{demo ? 'Пример дневника · можно пробовать все функции' : cloud ? 'Ваш дневник сохранён в Telegram-аккаунте' : 'Ваши записи остаются в этом браузере'}</span></footer>
         </div>}
       </main>
-      {!form && view !== 'onboarding' && <nav className="bottom-nav" aria-label="Основная навигация">{[['today', 'Сегодня', Home], ['history', 'История', History], ['profile', 'Профиль', UserRound]].map(([key, title, icon]) => <button key={key} aria-current={view === key ? 'page' : undefined} className={view === key ? 'active' : ''} onClick={() => { setView(key); setSavedRecord(null); }}><Icon as={icon} /><span>{title}</span></button>)}</nav>}
+      {!form && view !== 'onboarding' && <nav className="bottom-nav" aria-label="Основная навигация">{[['today', 'Сегодня', Home], ['history', 'История', History], ['profile', 'Профиль', UserRound]].map(([key, title, icon]) => <button key={key} aria-current={view === key ? 'page' : undefined} className={view === key ? 'active' : ''} onClick={() => { setFocusReminders(false); setView(key); setSavedRecord(null); }}><Icon as={icon} /><span>{title}</span></button>)}</nav>}
     </div><div className="toast" role="status" aria-live="polite" data-visible={Boolean(toast)}>{toast && <><Icon as={Check} size={17} />{toast}</>}</div>
   </AppRoot>;
 }

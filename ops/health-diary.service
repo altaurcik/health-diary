@@ -1,0 +1,24 @@
+[Unit]
+Description=Healthnote API and Telegram reminders
+After=network-online.target postgresql@16-main.service
+Wants=network-online.target
+[Service]
+User=health-diary
+Group=health-diary
+WorkingDirectory=/opt/health-diary/current/backend
+EnvironmentFile=/etc/health-diary/app.env
+ExecStart=/usr/bin/python3 /opt/health-diary/current/backend/server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+UMask=0077
+MemoryMax=160M
+TasksMax=32
+[Install]
+WantedBy=multi-user.target

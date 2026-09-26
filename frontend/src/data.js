@@ -48,8 +48,8 @@ export function recordTiming({ localValue, timeZone, initialAt, existing, savedA
 export function formatDate(at, zone, options = {}) { return new Intl.DateTimeFormat('ru-RU', { timeZone: zone, day: 'numeric', month: 'short', ...options }).format(new Date(at)); }
 export function formatTime(at, zone) { return new Intl.DateTimeFormat('ru-RU', { timeZone: zone, hour: '2-digit', minute: '2-digit' }).format(new Date(at)); }
 export function emptyState(theme = 'dark') {
-  return { version: 1, profile: { birthDate: '', sex: '', height: '', timezone: deviceZone(), theme }, records: [],
-    schedules: { bp: { enabled: true, frequency: 'daily', days: [1, 2, 3, 4, 5, 6, 0], monthDay: 1, times: ['08:00', '20:00'] }, weight: { enabled: true, frequency: 'weekly', days: [1], monthDay: 1, times: ['08:30'] } }, reminderActions: {} };
+  return { version: 2, profile: { birthDate: '', sex: '', height: '', timezone: deviceZone(), theme }, records: [],
+    schedules: [], reminderActions: {} };
 }
 export function validateRecord(input, now = Date.now()) {
   if (!['bp', 'weight'].includes(input.kind)) return 'Неизвестный тип записи.';
@@ -72,24 +72,60 @@ export function validateRecord(input, now = Date.now()) {
   }
   return '';
 }
-export function validateState(value) {
-  if (!value || value.version !== 1 || !value.profile || !validZone(value.profile.timezone) || !['light', 'dark', 'system'].includes(value.profile.theme) || !Array.isArray(value.records) || !value.schedules || !value.reminderActions) throw new Error('Формат сохранённого дневника не поддерживается.');
-  if (new Set(value.records.map(r => r.id)).size !== value.records.length || value.records.some(r => typeof r.id !== 'string' || validateRecord(r))) throw new Error('В сохранённых записях есть ошибка.');
-  for (const kind of ['bp', 'weight']) {
-    const s = value.schedules[kind];
-    if (!s || !['daily', 'weekly', 'monthly'].includes(s.frequency) || !Array.isArray(s.times) || !s.times.length || s.times.some(t => !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) || !Array.isArray(s.days) || s.days.some(d => !Number.isInteger(d) || d < 0 || d > 6) || s.monthDay < 1 || s.monthDay > 28) throw new Error('Не удалось прочитать расписание.');
+export function newSchedule() {
+  return { id: uid(), kind: 'all', enabled: true, time: '08:00', frequency: 'weekly', days: [1, 2, 3, 4, 5, 6, 0] };
+}
+export function validateSchedules(schedules) {
+  if (!Array.isArray(schedules)) return 'Не удалось прочитать расписания.';
+  if (new Set(schedules.map(s => s?.id)).size !== schedules.length) return 'Расписания должны иметь разные идентификаторы.';
+  for (const s of schedules) {
+    if (!s || typeof s.id !== 'string' || !s.id || !['all', 'bp', 'weight'].includes(s.kind) || typeof s.enabled !== 'boolean') return 'Проверьте тип напоминания.';
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(s.time)) return 'Укажите время напоминания.';
+    if (!['daily', 'weekly'].includes(s.frequency) || !Array.isArray(s.days) || s.days.some(d => !Number.isInteger(d) || d < 0 || d > 6)) return 'Проверьте повтор напоминания.';
+    if (new Set(s.days).size !== s.days.length) return 'Дни недели не должны повторяться.';
+    if (s.enabled && s.frequency === 'weekly' && !s.days.length) return 'Выберите хотя бы один день недели.';
   }
-  // Legacy UTC instants are known; their original device time zone is not.
-  return { ...value, records: value.records.map(record => ({ ...record, timestamp: Date.parse(record.at) })) };
+  return '';
+}
+function normalizeSchedule(schedule) {
+  if (!schedule) return schedule;
+  const { monthDay, ...rest } = schedule;
+  if (schedule.frequency === 'monthly') return { ...rest, frequency: 'weekly', days: [], enabled: false };
+  if (schedule.frequency === 'daily') return { ...rest, frequency: 'weekly', days: [1, 2, 3, 4, 5, 6, 0] };
+  return rest;
+}
+function migrateSchedules(value) {
+  if (value.version === 2) return { ...value, schedules: value.schedules.map(normalizeSchedule) };
+  const schedules = [], reminderActions = {};
+  for (const kind of ['bp', 'weight']) {
+    const old = value.schedules?.[kind];
+    if (!old || !Array.isArray(old.times) || !old.times.length) throw new Error('Не удалось прочитать старое расписание.');
+    for (const time of old.times) {
+      const id = `legacy-${kind}-${String(time).replace(':', '')}`;
+      schedules.push({ id, kind, enabled: old.enabled, time, frequency: old.frequency, days: old.days, monthDay: Number(old.monthDay) });
+      for (const [key, action] of Object.entries(value.reminderActions || {})) {
+        const match = key.match(/^(bp|weight):(\d{4}-\d{2}-\d{2}):(\d{2}:\d{2})$/);
+        if (match && match[1] === kind && match[3] === time) reminderActions[`${id}:${match[2]}:${time}:${kind}`] = action;
+      }
+    }
+  }
+  return { ...value, version: 2, schedules: schedules.map(normalizeSchedule), reminderActions };
+}
+export function validateState(value) {
+  if (!value || ![1, 2].includes(value.version) || !value.profile || !validZone(value.profile.timezone) || !['light', 'dark', 'system'].includes(value.profile.theme) || !Array.isArray(value.records) || !value.schedules || !value.reminderActions) throw new Error('Формат сохранённого дневника не поддерживается.');
+  if (new Set(value.records.map(r => r.id)).size !== value.records.length || value.records.some(r => typeof r.id !== 'string' || validateRecord(r))) throw new Error('В сохранённых записях есть ошибка.');
+  const migrated = migrateSchedules(value);
+  const error = validateSchedules(migrated.schedules);
+  if (error) throw new Error(error);
+  // Migration is in memory; storage is only written on the next successful user edit.
+  return { ...migrated, records: value.records.map(record => ({ ...record, timestamp: Date.parse(record.at) })) };
 }
 export function validateProfile(profile, schedules, now = Date.now()) {
   if (!validZone(profile.timezone)) return 'Выберите корректный часовой пояс.';
   const height = profile.height === '' ? '' : Number(String(profile.height).replace(',', '.'));
   if (height !== '' && (!Number.isFinite(height) || height < 50 || height > 250)) return 'Рост: число от 50 до 250 см.';
   if (profile.birthDate && (!/^\d{4}-\d{2}-\d{2}$/.test(profile.birthDate) || profile.birthDate > dayKey(now, profile.timezone) || profile.birthDate < '1900-01-01')) return 'Проверьте дату рождения.';
-  if (Object.values(schedules).some(s => s.enabled && s.frequency === 'weekly' && !s.days.length)) return 'Выберите хотя бы один день для расписания.';
-  if (Object.values(schedules).some(s => s.enabled && new Set(s.times).size !== s.times.length)) return 'Укажите разное время двух измерений.';
-  return '';
+  return validateSchedules(schedules);
 }
 export function loadState(storage) {
   try { const text = storage.getItem(STORAGE_KEY); return { data: text ? validateState(JSON.parse(text)) : null, error: '' }; }
@@ -126,48 +162,49 @@ export function summaryCoverage(summary) {
   const plural = (n, forms) => forms[n % 100 >= 11 && n % 100 <= 14 ? 2 : n % 10 === 1 ? 0 : n % 10 >= 2 && n % 10 <= 4 ? 1 : 2];
   return `${summary.count} ${plural(summary.count, ['замер', 'замера', 'замеров'])} · ${summary.days} ${plural(summary.days, ['день', 'дня', 'дней'])}`;
 }
-export function chartData(records, metric, period, zone) {
-  const asc = sorted(records, zone).reverse();
-  const weekly = period === '365' || (period === 'all' && asc.length > 0 && (Date.parse(asc.at(-1).at) - Date.parse(asc[0].at)) > 180 * 86400000);
-  const daily = weekly || period === '90' || asc.length > 40;
-  if (!daily) return asc.map(r => ({ at: r.at, value: valuesFor([r], metric)[0], lower: metric === 'bp' ? r.diastolic : null, count: 1 }));
-  const groups = new Map();
-  for (const r of asc) {
-    let key = dayKey(r.at, zone);
-    if (weekly) { const weekday = new Date(`${key}T12:00Z`).getUTCDay(); key = shiftDay(key, -((weekday + 6) % 7)); }
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(r);
-  }
-  return [...groups.entries()].map(([key, group]) => ({ at: zonedIso(`${key}T12:00`, zone), value: mean(valuesFor(group, metric)), lower: metric === 'bp' ? mean(group.map(r => r.diastolic)) : null, count: group.length, aggregate: weekly ? 'неделя' : 'день' }));
+// Every point keeps its source record, even for year/all-time views.
+export function chartData(records, metric, _period, zone) {
+  return sorted(records, zone).reverse().map(record => ({ key: record.id, at: record.at,
+    value: valuesFor([record], metric)[0], lower: metric === 'bp' ? record.diastolic : null,
+    record }));
+}
+export function chartWindow(records, zone, bounds = [0, 1000]) {
+  const coordinates = records.map(record => localTimeCoordinate(record.at, zone));
+  if (!coordinates.length) return { records: [], start: null, end: null };
+  const first = Math.min(...coordinates), last = Math.max(...coordinates);
+  const start = first + (last - first) * bounds[0] / 1000;
+  const end = first + (last - first) * bounds[1] / 1000;
+  return { start, end, records: records.filter((_, i) => coordinates[i] >= start && coordinates[i] <= end) };
 }
 export function seriesMean(records, seriesId) { return stats(records.filter(r => r.kind === 'bp' && r.seriesId === seriesId), 'bp'); }
 export function bmi(weight, height) { return weight > 0 && height > 0 ? weight / ((height / 100) ** 2) : null; }
 export function reminders(state, now = Date.now()) {
-  const zone = state.profile.timezone;
-  const today = dayKey(now, zone);
-  const result = [];
-  for (const kind of ['bp', 'weight']) {
-    const schedule = state.schedules[kind];
+  const zone = state.profile.timezone, today = dayKey(now, zone), result = [];
+  for (const schedule of state.schedules) {
     if (!schedule.enabled) continue;
-    for (let d = 0; d < 35; d++) {
-      const day = shiftDay(today, d); const date = new Date(`${day}T12:00Z`);
+    let occurrences = 0;
+    for (let d = -1; d < 35 && occurrences < 2; d++) {
+      const day = shiftDay(today, d), date = new Date(`${day}T12:00Z`);
       if (schedule.frequency === 'weekly' && !schedule.days.includes(date.getUTCDay())) continue;
-      if (schedule.frequency === 'monthly' && date.getUTCDate() !== Number(schedule.monthDay)) continue;
-      for (const time of schedule.times) {
-        let at; try { at = zonedIso(`${day}T${time}`, zone); } catch { continue; }
-        const key = `${kind}:${day}:${time}`;
-        const action = state.reminderActions[key];
-        if (action === 'skip' || action === 'done') continue;
-        if (typeof action === 'number') at = new Date(action).toISOString();
-        result.push({ key, kind, at, overdue: Date.parse(at) <= now });
+      let scheduledAt; try { scheduledAt = zonedIso(`${day}T${schedule.time}`, zone); } catch { continue; }
+      const key = `${schedule.id}:${day}:${schedule.time}`;
+      const groups = new Map();
+      for (const kind of schedule.kind === 'all' ? ['bp', 'weight'] : [schedule.kind]) {
+        const taskKey = `${key}:${kind}`, action = state.reminderActions[taskKey];
+        if (action === 'skip' || action === 'done' || (d < 0 && typeof action !== 'number')) continue;
+        const at = typeof action === 'number' ? new Date(action).toISOString() : scheduledAt;
+        if (!groups.has(at)) groups.set(at, []);
+        groups.get(at).push({ kind, key: taskKey });
       }
-      if (result.filter(r => r.kind === kind).length >= 2) break;
+      for (const [at, tasks] of groups) result.push({ key: `${key}:${at}`, scheduleId: schedule.id, at, tasks, overdue: Date.parse(at) <= now });
+      if (groups.size) occurrences++;
     }
   }
-  return result.sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).slice(0, 3);
+  return result.sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.key.localeCompare(b.key)).slice(0, 3);
 }
 export function makeDemo(now = Date.now()) {
   const state = emptyState(); state.profile.height = 178; state.profile.sex = 'male'; state.profile.birthDate = '1990-05-15';
+  state.schedules = [{ ...newSchedule(), id: 'demo-morning', time: '08:00', kind: 'all' }, { ...newSchedule(), id: 'demo-evening', time: '20:00', kind: 'bp' }];
   const zone = state.profile.timezone; const today = dayKey(now, zone);
   for (let d = 29; d >= 0; d--) {
     const day = shiftDay(today, -d); const at = zonedIso(`${day}T08:15`, zone);
