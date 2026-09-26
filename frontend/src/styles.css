@@ -257,6 +257,7 @@ h3 { font-size: 16px; font-weight: 650; }
   .pressure-value { font-size: 54px; }
   .secondary-measurements > div { padding-left: 17px; padding-right: 17px; }
   .summary-label { font-size: 12px; }
+  .secondary-measurements .summary-label { min-height: 34px; }
   .summary-label .time-label { font-size: 9px; }
   .chart-caption { flex-wrap: wrap; }
   .record-row { gap: 8px; }

@@ -39,11 +39,12 @@ Telegram-дневник здоровья для давления, пульса �
 | `frontend/package.json`, `frontend/package-lock.json` | Локальные зависимости React 18 и Telegram UI; версии зафиксированы |
 | `frontend/scripts/check-ui.mjs` | Проверка импорта, CSS и рендера установленных компонентов |
 | `frontend/src/App.jsx`, `src/styles.css` | Экраны, формы и адаптивный интерфейс |
-| `frontend/src/data.js`, `test/data.test.js` | Логика дневника и 17 тестов |
+| `frontend/src/data.js`, `test/data.test.js` | Логика дневника и 19 тестов |
 | `frontend/index.html`, `vite.config.js` | Точка входа и локальные dev/preview-серверы |
 | [PRODUCT.md](PRODUCT.md), [DESIGN.md](DESIGN.md), [UI_DIRECTION.md](docs/UI_DIRECTION.md) | Продукт, визуальные токены и направление текущей версии |
 | [docs/WEB_V1.md](docs/WEB_V1.md) | Запуск, реализованные сценарии, ограничения и проверки |
 | [docs/RECORD_TIME.md](docs/RECORD_TIME.md) | Местное время устройства, UTC timestamp, сортировка и совместимость записей |
+| [docs/HOME_SUMMARY.md](docs/HOME_SUMMARY.md) | Недельные средние на главной, окно, знаменатели и решение об утре/вечере |
 
 Первая самостоятельная веб-версия реализована локально: «Сегодня», история,
 формы измерений, профиль и расписания. Точка входа — `frontend/index.html`
@@ -71,6 +72,9 @@ Backend и серверная БД ещё не выбраны; текущий а
 
 ## Реализовано и проверено
 
+- 2026-09-26: на главной средние давление/пульс/вес за 7 местных календарных
+  дней, с числом замеров и дней с данными; период графика не влияет на карточку.
+  Пустое окно — прочерк. 19 тестов и build прошли. [Правила](docs/HOME_SUMMARY.md).
 - 2026-09-26: ввод измерений, графики, периоды и сортировка переведены на
   местное время устройства. Новые записи содержат UTC ISO, Unix milliseconds,
   исходные localDateTime/timeZone/utcOffsetMinutes и время создания/изменения.

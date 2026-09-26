@@ -372,7 +372,7 @@
     "typographyMeta": {
       "display": {
         "displayName": "display",
-        "purpose": "Последнее давление; на узком экране уменьшается до 54px."
+        "purpose": "Среднее давление за 7 дней; на узком экране уменьшается до 54px."
       },
       "headline": {
         "displayName": "headline",
@@ -493,8 +493,8 @@
       "name": "Карточка показаний",
       "kind": "card",
       "refersTo": "summary-card",
-      "description": "Крупное последнее давление, единицы и время. Данные примера.",
-      "html": "<section class=\"ds-summary\"><div class=\"ds-summary-label\">Давление <span>08:30 · демо</span></div><div class=\"ds-pressure\">128 <span>/</span> 82</div><p>мм рт. ст.</p></section>",
+      "description": "Среднее давление за 7 дней, единицы и количество замеров. Данные примера.",
+      "html": "<section class=\"ds-summary\"><div class=\"ds-summary-label\">Среднее давление <span>За 7 дней · демо</span></div><div class=\"ds-pressure\">128 <span>/</span> 82</div><p>мм рт. ст.</p></section>",
       "css": ".ds-summary{font-family:'Manrope Variable',Manrope,sans-serif;padding:23px 24px 21px;border-radius:24px;background:var(--surface,#182326);color:var(--text,#edf5f3);}.ds-summary-label{display:flex;justify-content:space-between;gap:7px;font-size:13px;font-weight:550;color:var(--muted,#a2b9b8);}.ds-summary-label span{font-size:11px;font-weight:450;}.ds-pressure{display:flex;align-items:baseline;gap:9px;padding-top:13px;font-size:66px;font-weight:550;line-height:1.12;letter-spacing:-2px;font-variant-numeric:tabular-nums;}.ds-pressure span{font-size:42px;font-weight:300;color:var(--muted,#a2b9b8);}.ds-summary p{font-size:11px;color:var(--muted,#a2b9b8);margin:8px 0 0;}@media(max-width:359px){.ds-pressure{font-size:54px;}}"
     },
     {

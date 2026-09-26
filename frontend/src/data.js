@@ -115,6 +115,17 @@ export function selectRecords(records, metric, period, zone, now = Date.now()) {
 }
 export function valuesFor(records, metric) { return records.map(r => metric === 'bp' ? r.systolic : metric === 'pulse' ? r.pulse : r.weight).filter(v => v != null); }
 export function stats(records, metric) { const values = valuesFor(records, metric); return { avg: mean(values), min: values.length ? Math.min(...values) : null, max: values.length ? Math.max(...values) : null, lower: metric === 'bp' ? mean(records.map(r => r.diastolic)) : null, count: values.length }; }
+export function sevenDaySummary(records, zone = deviceZone(), now = Date.now()) {
+  return Object.fromEntries(['bp', 'pulse', 'weight'].map(metric => {
+    const selected = selectRecords(records, metric, '7', zone, now);
+    return [metric, { ...stats(selected, metric), days: new Set(selected.map(record => dayKey(record.at, zone))).size }];
+  }));
+}
+export function summaryCoverage(summary) {
+  if (!summary.count) return 'Пока нет измерений';
+  const plural = (n, forms) => forms[n % 100 >= 11 && n % 100 <= 14 ? 2 : n % 10 === 1 ? 0 : n % 10 >= 2 && n % 10 <= 4 ? 1 : 2];
+  return `${summary.count} ${plural(summary.count, ['замер', 'замера', 'замеров'])} · ${summary.days} ${plural(summary.days, ['день', 'дня', 'дней'])}`;
+}
 export function chartData(records, metric, period, zone) {
   const asc = sorted(records, zone).reverse();
   const weekly = period === '365' || (period === 'all' && asc.length > 0 && (Date.parse(asc.at(-1).at) - Date.parse(asc[0].at)) > 180 * 86400000);

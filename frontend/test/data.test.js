@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyState, formTime, zonedIso, dayKey, selectRecords, stats, chartData, seriesMean, validateRecord, validateProfile, saveState, loadState, reminders, bmi, makeDemo, STORAGE_KEY, timeMetadata, recordTiming, sorted, localTimeCoordinate } from '../src/data.js';
+import { emptyState, formTime, zonedIso, dayKey, selectRecords, stats, chartData, seriesMean, validateRecord, validateProfile, saveState, loadState, reminders, bmi, makeDemo, STORAGE_KEY, timeMetadata, recordTiming, sorted, localTimeCoordinate, sevenDaySummary, summaryCoverage } from '../src/data.js';
 const now = Date.parse('2026-09-26T12:00:00Z');
 const bp = (id, at, systolic = 128, diastolic = 82, pulse = null) => ({ id, kind: 'bp', at, systolic, diastolic, pulse, comment: '' });
 
@@ -138,4 +138,29 @@ test('profile validation handles invalid time zones before date calculations', (
   assert.equal(validateProfile({ ...state.profile, height: '178,5' }, state.schedules, now), '');
   state.schedules.bp.frequency = 'weekly'; state.schedules.bp.days = [];
   assert.ok(validateProfile(state.profile, state.schedules, now));
+});
+test('home summary averages the last seven local calendar days, independently per metric', () => {
+  const rows = [
+    bp('outside', '2026-09-19T20:59:00Z', 200, 120, 110),
+    bp('first-day', '2026-09-19T21:00:00Z', 120, 80, 60),
+    bp('today-1', '2026-09-26T08:00:00Z', 140, 90, null),
+    bp('today-2', '2026-09-26T09:00:00Z', 130, 85, 80),
+    bp('future', '2026-09-26T13:00:00Z', 200, 120, 110),
+    { id: 'w1', kind: 'weight', at: '2026-09-24T07:00:00Z', weight: 75 },
+    { id: 'w2', kind: 'weight', at: '2026-09-26T07:00:00Z', weight: 77 },
+  ];
+  const result = sevenDaySummary(rows, 'Europe/Moscow', now);
+  assert.deepEqual(result.bp, { avg: 130, lower: 85, min: 120, max: 140, count: 3, days: 2 });
+  assert.equal(result.pulse.avg, 70); assert.equal(result.pulse.count, 2); assert.equal(result.pulse.days, 2);
+  assert.equal(result.weight.avg, 76); assert.equal(result.weight.count, 2); assert.equal(result.weight.days, 2);
+});
+test('home summary does not fall back to stale readings or fill missing days with zero', () => {
+  const old = bp('old', '2026-08-01T10:00:00Z');
+  const empty = sevenDaySummary([old], 'Europe/Moscow', now);
+  assert.equal(empty.bp.avg, null); assert.equal(empty.bp.count, 0); assert.equal(empty.weight.avg, null);
+  const partial = sevenDaySummary([old, bp('only', '2026-09-26T10:00:00Z', 126, 81, 68)], 'Europe/Moscow', now);
+  assert.equal(partial.bp.avg, 126); assert.equal(partial.bp.lower, 81); assert.equal(partial.bp.days, 1);
+  assert.equal(summaryCoverage(partial.bp), '1 замер · 1 день');
+  assert.equal(summaryCoverage({ count: 14, days: 7 }), '14 замеров · 7 дней');
+  assert.equal(summaryCoverage({ count: 0, days: 0 }), 'Пока нет измерений');
 });
