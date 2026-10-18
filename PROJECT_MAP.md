@@ -182,6 +182,10 @@ Workflow и инструкции — [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Работа с Git
 
+Репозиторий [altaurcik/health-diary](https://github.com/altaurcik/health-diary)
+публичный; видимость `public` проверена 2026-10-18. Ссылка на Telegram-бота
+[@bpjournalbot](https://t.me/bpjournalbot) размещена в начале README.
+
 Git-команды выполнять из каталога проекта. На этом Mac использовать
 `/Library/Developer/CommandLineTools/usr/bin/git` (обычный системный Git
 ранее блокировался лицензией Xcode; см. общую карту).
